@@ -1,0 +1,335 @@
+---
+title: "Stats506 homework1"
+author: "Chengrui Zhao"
+format: html
+editor: visual
+---
+
+## problem 1
+
+From https://archive.ics.uci.edu/dataset/109/wine, download the data set about wine. It contains two files of interest - “wine.data” with the actual rectangular data set, and “wine.names” with some information about the data.
+
+a,Import the data into a data.frame in R. Use the information in the “wine.names” file to give appropriate column names. 
+
+```{r}
+#read in the wine data
+wine1<-read.csv("C:\\Users\\DELL\\Downloads\\wine\\wine.data",header=F,,col.names = c("type","alcohol","malic acid","ash","alcalinity of ash","magnesium","total phenols","flavanoids","nonflavanoid phenols","proanthocyanins","color intensity","hue","OD280/OD315 of diluted wines","Proline"))
+
+#turn the file into a data frame
+wine1<-as.data.frame(wine1)
+```
+
+b,The data contains information on three different classes of wine. Check and report that the number of wines within each class is correct as reported in “wine.names”.
+
+```{r}
+#check the number of rows for wine type1
+wine11<-wine1[which(wine1$type==1),]
+nrow(wine11)
+
+#check the number of rows for wine type2
+wine12<-wine1[which(wine1$type==2),]
+nrow(wine12)
+
+#check the number of rows for wine type3
+wine13<-wine1[which(wine1$type==3),]
+nrow(wine13)
+```
+
+So the number of wines in each type are 59, 71 and 48 respectively, which is correct as reported.
+
+
+c, Use the data to answer the following questions:
+
+1,What is the correlation between alcohol content and color intensity?
+
+```{r}
+#get the correlation between alcohol and color intensity
+cor(wine1[,c(2,11)])
+```
+
+the correlation is around 0.5463642
+
+
+2,Which class has the highest correlation? Which has the lowest?
+
+```{r}
+#get the correlation of wine type1
+cor(wine11[,c(2,11)])
+
+#get the correlation of wine type2
+cor(wine12[,c(2,11)])
+
+#get the correlation of wine type3
+cor(wine13[,c(2,11)])
+```
+
+the correlation between alcohol and color intensity for different types are 0.4082913, 0.2697891 and 0.3503777 respectively, so type 1 has the highest correlation while type 2 has the lowest.
+
+
+3,What is the alcohol content of the wine with the highest color intensity?
+
+```{r}
+#get the row of wine that has maximum color intensity
+wine2<-wine1[which(wine1$color.intensity==max(wine1$color.intensity)),]
+
+#get the alcohol of it
+wine2<-wine2[,2]
+wine2
+```
+
+the alcohol content is 14.34
+
+
+4,What percentage of wines had a higher content of proanthocyanins compare to ash?
+
+```{r}
+#get the row of wine that had a higher content of proanthocyanins compare to ash
+wine3<-wine1[which(wine1$proanthocyanins>wine1$ash),]
+
+#calculate percentage
+num<-nrow(wine3)/nrow(wine1)
+num
+```
+
+the percentage is around 8.427%.
+
+
+d,Create a table identifying the average value of each variable, providing one row for the overall average, and one row per class with class averages. (This table does not need to be “fancy” but should clearly identify what each value represents.)
+
+```{r}
+#get the overall and separate mean of wine
+avg1<-sapply(wine1,mean)
+avg2<-sapply(wine1,mean)
+avg3<-sapply(wine1,mean)
+avg4<-sapply(wine1,mean)
+
+#create a table for them
+tab<-rbind(avg1,avg2,avg4,avg4)
+
+#use suitable row names
+rownames(tab)<-c("overall average","average of type1","average of type2","average of type3")
+tab
+```
+ 
+the table is created as above
+
+
+e,Carry out a series of t-tests to examine whether the level of phenols differs across the three classes. Present the R output and interpret the results. 
+
+```{r}
+# three t-test
+t.test(wine11$total.phenols,wine12$total.phenols)
+t.test(wine13$total.phenols,wine12$total.phenols)
+t.test(wine11$total.phenols,wine13$total.phenols)
+```
+
+according to three comparisons, for the first one type1 and type3 the p-value<0.05 so it's not different, for the second one type2 and type3 the p-value<0.05 so it's not different, for the third one type1 and type3 the p-value<0.05 so it's not different.
+
+
+## problem 2
+
+Please download this dataset. It is from an ongoing salary survey from AskAManager.org. We’re going to do some data cleaning to prepare it for an analysis.
+
+a,Import the data into a data.frame in R. 
+
+```{r}
+#read in the file
+ask<-read.csv("C:\\Users\\DELL\\Downloads\\AskAManager.csv",na.strings = "NA")
+
+#make the file a data frame, athough it's already a data frame
+ask<-as.data.frame(ask)
+```
+
+b,Clean up the variable names. Simplify them.
+
+```{r}
+#simplify variable names
+colnames(ask)<-c("number","time","age","industry","title","additional title","annual salary","additional compensation","currency","other currency","additional context for salary","country","US states","city","overall work experience","specific field work experience","education","gender","race")
+```
+
+c,Restrict the data to those being paid in US dollars (USD). Show that it worked by confirming the number of observations before and after restricting the data.
+
+```{r}
+#get the number of rows before changes
+nrow(ask)
+
+#get the rows where currency is USD
+ask<-ask[which(ask$currency=="USD"),]
+
+#get the number of rows now
+nrow(ask)
+```
+
+The codes work by choosing people who use USD currency, the original data has 28062 rows but now there's only 23374 rows, so it works
+
+
+d,Assume no one starts working before age 18. Eliminate any rows for which their age, years of experience in their field, and years of experience total are impossible. Again, confirm the number of observations. (Hint: Making these variables factor may make your life easier.)
+
+```{r}
+#get the number of rows before changes
+nrow(ask)
+
+#change columns related to ages to numeric by first changing them to factor, then character and finally numeric to conduct calculations below
+ask[,3]<-as.numeric(as.character(factor(ask[,3],labels=c(24,34,44,54,64,65,18))))
+ask[,15]<-as.numeric(as.character(factor(ask[,15],labels=c(1,20,4,30,40,41,7,10))))
+ask[,16]<-as.numeric(as.character(factor(ask[,16],labels=c(0,11,2,21,31,41,5,8))))
+
+#change the missing number in columns related to age into NA so that we can eliminate those rows with missing numbers
+ask[is.na(ask)]<-"NA"
+
+#eliminate those rows that have missing numbers in columns related to age
+ask<-ask[which(ask$age!="NA"),]
+ask<-ask[which(ask$`overall work experience`!="NA"),]
+ask<-ask[which(ask$`specific field work experience`!="NA"),]
+
+#eliminate those who are less than 18
+ask<-ask[which(ask$age!=18),]
+
+#eliminate those who have specific field work experience longer than overall work experience
+ask<-ask[which(ask$`overall work experience`>=ask$`specific field work experience`),]
+
+#eliminate those rows who may start working before 18
+ask[,15]<-as.numeric(as.character(factor(ask[,15],labels=c(0,2,5,8,11,21,31,41))))
+ask<-ask[which(ask$age-ask$`overall work experience`>=18),]
+
+#get the number of rows now
+nrow(ask)
+```
+The code works by several steps, first eliminate those with NA in the age related columns, then eliminate those whose age is under 18 since a person need to be at least 18 to work, then eliminate those who have a working year in specific field less than working year overall, here use the upper bound of overall working year and lower bound of specific field working year in each factor so that those whose overall and specific field working year are in the same boundary won't be eliminated, finally eliminate those who starts working before 18 according to their age and overall working years (using upper bound of age and lower bound of overall working years). After the change in c there are 23374 data, and after change in d there are 23116.
+
+
+e,A lot of the incomes are likely false. Eliminate any rows with extremely low or extremely high salaries. you could choose to eliminate only impossible values, or you could restrict the sample to eliminate the extreme values even if they are realistic (e.g. removing the billionaires or the folks making \< \$1,000 per year). You must justify your choice, along with either a cited source or an exploration the data, or some combination.
+
+Report your final sample size.
+
+```{r}
+#in order to make the plots more organized, here draw two plots at the same space
+par(mfrow=c(1,2))
+
+#get the columns related to income to be numeric for the calculation below
+for(i in 7:8){
+  ask[,i]<-as.numeric(ask[,i])
+}
+
+#make all missing number in additional compensation to be 0
+ask$`additional compensation`[is.na(ask$`additional compensation`)]=0
+
+#the principle of getting extreme value is to first draw the boxplots for annual salary and additional compensation, then for the upper extreme value, that's the sum of the smallest outlier above upper bound of box in annual salary and compensation and the lower extreme value is the sum of biggest outliers below lower bound of boxplots.
+boxplot(ask$`annual salary`)
+boxplot(ask$`additional compensation`)
+
+#eliminate those extreme value, here it's hard to see the lower bound, so define it as 1000, and the higher bound is 7500000+62500=7562500
+ask<-ask[which(ask$`annual salary`+ask$`additional compensation`>1000),]
+ask<-ask[which(ask$`annual salary`+ask$`additional compensation`<7562500),]
+
+#get the number of row now
+nrow(ask)
+```
+
+To get my choice of defining extreme number, I explored the data and draw boxplots, the principle of getting extreme number is: for the upper extreme value, get the sum of the lowest outlier above upper bound of boxes for annual salary and compensation, for the lower extreme value get the sum of highest outlier below lower bound of boxes. Here it's hard to see the lower bound because it's unclear and too close to zero, so I use the example of defining it to be 1000, and the higher bound is 7500000+62500=7562500. I use data after change of d. The sample size is 23053 now.
+
+
+## problem 3
+
+Palindromic numbers are integers that are equal to the reverse of their digits. For example, 59195 is palindromic, whereas 59159 is not.
+
+a,Write function isPalindromic that checks if a given positive integer is a palindrome. Be sure to provide a reasonable error on an invalid input. Be sure to document your function (see instructions above).
+
+Input: A positive integer Output: A list with two elements: isPalindromic: A logical value indicating if the input is palindromic. reversed: The input with its digits reversed.
+
+```{r}
+#' Function to create a tool to judge whether the given number is a palindromic
+#' 
+#' @param n a numeric vector
+#' @return the result of whether n is a palindromic and the reversed version of n
+isPalindromic<-function(n){
+    if((typeof(n)!="double")){
+    stop("Invalid input : please insert a positive integer")
+    }
+    if(n%%1!=0|(n<=0)){
+      stop("Invalid input : please insert a positive integer")
+    }
+    rem=c()
+    n1=n
+    while(n>=1){
+      rem<-c(rem,n%%10)
+      n<-n%/%10
+    }
+    i=1
+    while(i <=floor(length(rem)/2)){
+      if(rem[i]==rem[length(rem)-i+1]){
+        l2<-list(isPalindromic=TRUE,reversed=n1)
+        i<-i+1
+      }
+        else{
+          l3<-list(isPalindromic=FALSE,reversed=as.numeric(paste(rem,collapse = "")))
+          return(l3)
+        }
+    }
+    if(i>floor(length(rem)/2)){
+      return(l2)
+    }
+}
+```
+
+here I make the function work by first splitting n into a numeric group called a with all its digits, then compared the first and final, second and last but one, and so on in the group a (which are different digits of number), if they all equal to each other then it's a palindromic, otherwise it's not, then I return the judgement of whether it's a palindromic and its reversed form.
+
+
+b,Create a function nextPalindrome that finds the next palindromic number strictly greater than the input. Be sure to provide a reasonable error on an invalid input.
+
+Input: A positive integer Output: A vector of length 1 with the next palindromic number greater than the input
+
+```{r}
+#' Function to create a tool to get the palindrome next to the given number
+#' 
+#' @param n a numeric vector
+#' @return the palindrome next to the given number
+nextPalindrome<-function(n){
+  if((typeof(n)!="double")){
+    stop("Invalid input : please insert a positive integer")
+    }
+    if(n%%1!=0|(n<=0)){
+      stop("Invalid input : please insert a positive integer")
+    }
+  while(n<9){
+    return(as.vector(n+1))
+  }
+  while(n==9){
+    n<-n+1
+    while(isPalindromic(n)$isPalindromic==FALSE){
+      n<-n+1
+    }
+    return(as.vector(n))
+  }
+  if(isPalindromic(n)$isPalindromic==TRUE){
+    n<-n+1
+    while(isPalindromic(n)$isPalindromic==FALSE){
+      n<-n+1
+    }
+    return(as.vector(n))
+  }
+  else{
+    while(isPalindromic(n)$isPalindromic==FALSE){
+      n<-n+1
+    }
+    return(as.vector(n))
+  }
+}
+```
+
+Here I make the function work by using the function I used before.
+
+c,Use these functions to find the next palindrome for each of the following:
+
+391 9928 19272719 109 2
+
+```{r}
+#test numbers
+nextPalindrome(391)
+nextPalindrome(9928)
+nextPalindrome(19272719)
+nextPalindrome(109)
+nextPalindrome(2)
+```
+
+the link for Github repository is here: https://github.com/ChengruiZhao/stats-506-R-Chengrui-Zhao
