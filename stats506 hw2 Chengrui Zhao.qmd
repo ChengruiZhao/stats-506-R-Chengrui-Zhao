@@ -1,0 +1,568 @@
+---
+title: "stats 506 homework 2"
+author: "Chengrui Zhao"
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+## problem1: dice game
+
+Let’s play a dice game. It costs $2 to play. You roll a single 6-sided die.
+
+On a roll of 3 or 5, you win twice your roll.
+On any other roll, you lose.
+The input and output should be:
+
+Input: The number of dice to roll.
+Output: Total winnings
+
+a, Version 1: Implement this game using a loop.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  for (i in 1:length(prob)){
+    if(prob[i]==3){
+      mon<-mon+3*2-2
+    }
+    else if(prob[i]==5){
+      mon<-mon+5*2-2
+    }
+    else{
+      mon<-mon-2
+    }
+  }
+  return(mon)
+}
+```
+
+Here using for function as the loop, first get numbers with replacement, then use for to get the condition of amount of money for each game, every game we lose 2$, but when the dice rolls to 3 we win 3*2=6$ (so in this game we get 6-2=4), when the dice rolls to 5 we win 5*2=10$ (so in this game we get 10-2=8), then get the amount of money
+
+Version 2: Implement this game using built-in R vectorized functions.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  prob3<-sum(prob==3)
+  prob5<-sum(prob==5)
+  mon<-(3*2-2)*prob3+(5*2-2)*prob5-2*(n-prob3-prob5)
+  return(mon)
+}
+```
+
+Here the built-in R vectorized functions used is mainly sum by using it to get the number of games rolling to 3 and 5.
+
+Version 3: Implement this by rolling all the dice into one and collapsing the die rolls into a single table(). (Hint: Be careful indexing the table - what happens if you make a table of a single dice roll? You may need to look to other resources for how to solve this.)
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  table1<-table(prob)
+  mon<-ifelse("3" %in% names(table1), (2 * 3) * table1[["3"]], 0)+ifelse("5" %in% names(table1), (2 * 5) * table1[["5"]], 0)-2*n
+  return(mon)
+}
+```
+
+Here the table is used to get the total number of from 1 to 6 in all games and then the amount of money is obtained. To solve the problem of reporting error due to no specific number, we can use ifelse, if the specific number exist, just take it, or else if it doesn't exist, just give 0.
+
+Version 4: Implement this game by using one of the “apply” functions.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  winning<-function(){
+    prob<-sample(c(1:6),1)
+    if(prob==3){
+      return(3*2-2)
+    }
+    if(prob==5){
+      return(5*2-2)
+    }
+    else{
+      return(-2)
+    }
+  }
+  sap<-sapply(1:n,winning())
+  mon<-sum(sap)
+  return(mon)
+}
+```
+
+Here the "apply" function used is sapply, first build a function inside original function, which make rules about how much money to add for each game, then take it as function in sapply for each game, finally add all of them.
+
+b, Demonstrate that all versions work. Do so by running each a few times, once with an input a 3, and once with an input of 3,000.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  for (i in 1:length(prob)){
+    if(prob[i]==3){
+      mon<-mon+3*2-2
+    }
+    else if(prob[i]==5){
+      mon<-mon+5*2-2
+    }
+    else{
+      mon<-mon-2
+    }
+  }
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here test for loop, it works as it shows number for 3 and 3000 games.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  prob3<-sum(prob==3)
+  prob5<-sum(prob==5)
+  mon<-(3*2-2)*prob3+(5*2-2)*prob5-2*(n-prob3-prob5)
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here test built-in R vectorized function, it works as it shows number for 3 and 3000 games.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  table1<-table(prob)
+  mon<-ifelse("3" %in% names(table1), (2 * 3) * table1[["3"]], 0)+ifelse("5" %in% names(table1), (2 * 5) * table1[["5"]], 0)-2*n
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here test table function, it works as it shows number for 3 and 3000 games.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  winning<-function(){
+    prob<-sample(c(1:6),1)
+    if(prob==3){
+      return(3*2-2)
+    }
+    if(prob==5){
+      return(5*2-2)
+    }
+    else{
+      return(-2)
+    }
+  }
+  sap<-sapply(1:n,function(x)winning())
+  mon<-sum(sap)
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here test "apply" function, it works as it shows number for 3 and 3000 games.
+
+c, Demonstrate that the four versions give the same result. Test with inputs 3 and 3,000. (You will need to add a way to control the randomization.)
+
+```{r}
+#use set seed to make the random value fixed
+set.seed(5)
+
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  for (i in 1:length(prob)){
+    if(prob[i]==3){
+      mon<-mon+3*2-2
+    }
+    else if(prob[i]==5){
+      mon<-mon+5*2-2
+    }
+    else{
+      mon<-mon-2
+    }
+  }
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here use for loop, use set seed to fix it and the output is the same as other methods.
+
+```{r}
+#use set seed to make random value fixed
+set.seed(5)
+
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  prob3<-sum(prob==3)
+  prob5<-sum(prob==5)
+  mon<-(3*2-2)*prob3+(5*2-2)*prob5-2*(n-prob3-prob5)
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here use built-in R vectorized function, use set seed to fix it and the output is the same as other methods.
+
+```{r}
+#use set seed to make rabdome value fixed
+set.seed(5)
+
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  table1<-table(prob)
+  mon<-ifelse("3" %in% names(table1), (2 * 3) * table1[["3"]], 0)+ifelse("5" %in% names(table1), (2 * 5) * table1[["5"]], 0)-2*n
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here use table function, use set seed to fix it and the output is the same as other methods.
+
+```{r}
+#use set seed to make random value fixed
+set.seed(5)
+
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  winning<-function(){
+    prob<-sample(c(1:6),1)
+    if(prob==3){
+      return(3*2-2)
+    }
+    if(prob==5){
+      return(5*2-2)
+    }
+    else{
+      return(-2)
+    }
+  }
+  sap<-sapply(1:n,function(x)winning())
+  mon<-sum(sap)
+  return(mon)
+}
+
+#use input 3 and 3000
+play_dice(3)
+play_dice(3000)
+```
+
+Here use "apply" function, use set seed to fix it and the output is the same as other methods.
+
+d, Use the microbenchmark package to clearly demonstrate the speed of the implementations. Compare performance with a low input (1,000) and a large input (100,000). Discuss the results
+
+```{r}
+#first, get the microbenchmark
+library(microbenchmark)
+
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  for (i in 1:length(prob)){
+    if(prob[i]==3){
+      mon<-mon+3*2-2
+    }
+    else if(prob[i]==5){
+      mon<-mon+5*2-2
+    }
+    else{
+      mon<-mon-2
+    }
+  }
+  return(mon)
+}
+
+#use microbenchmark to record time it takes to calculate the amount of money for 1000 and 100000 games
+microbenchmark(play_dice(1000)) 
+microbenchmark(play_dice(100000)) 
+```
+
+Here use for loop, use microbenchmark to test the time it takes to get output of 3 and 3000 games respectively.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  prob3<-sum(prob==3)
+  prob5<-sum(prob==5)
+  mon<-(3*2-2)*prob3+(5*2-2)*prob5-2*(n-prob3-prob5)
+  return(mon)
+}
+
+#use microbenchmark to record time it takes to calculate the amount of money for 1000 and 100000 games
+microbenchmark(play_dice(1000)) 
+microbenchmark(play_dice(100000)) 
+```
+
+Here use built-in R vectorized function, use microbenchmark to test the time it takes to get output of 3 and 3000 games respectively.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  table1<-table(prob)
+  mon<-ifelse("3" %in% names(table1), (2 * 3) * table1[["3"]], 0)+ifelse("5" %in% names(table1), (2 * 5) * table1[["5"]], 0)-2*n
+  return(mon)
+}
+
+#use microbenchmark to record time it takes to calculate the amount of money for 1000 and 100000 games
+microbenchmark(play_dice(1000)) 
+microbenchmark(play_dice(100000)) 
+```
+
+Here use table function, use microbenchmark to test the time it takes to get output of 3 and 3000 games respectively.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  winning<-function(){
+    prob<-sample(c(1:6),1)
+    if(prob==3){
+      return(3*2-2)
+    }
+    if(prob==5){
+      return(5*2-2)
+    }
+    else{
+      return(-2)
+    }
+  }
+  sap<-sapply(1:n,function(x)winning())
+  mon<-sum(sap)
+  return(mon)
+}
+
+#use microbenchmark to record time it takes to calculate the amount of money for 1000 and 100000 games
+microbenchmark(play_dice(1000)) 
+microbenchmark(play_dice(100000)) 
+```
+
+Here use "apply" function, use microbenchmark to test the time it takes to get output of 3 and 3000 games respectively.
+
+Based on all methods above, it seems that for playing 1000 games, the speed of built-in R vectorized function is the fastest, then the loop, then table, the speed of "apply" function ranks the slowest. For playing 100000 games, the speed of built-in R vectorized function is the fastest, then the table, then the loop, the "apply" function is still the slowest.
+
+e, Do you think this is a fair game? Defend your decision with evidence based upon a Monte Carlo simulation.
+
+```{r}
+#' Function to get the final amount of money after all games
+#' 
+#' @param n a numeric vector, the number of games played
+#' @return the amount of money after all games
+play_dice<-function(n){
+  prob<-sample(c(1:6),n,replace = T)
+  mon<-0
+  prob3<-sum(prob==3)
+  prob5<-sum(prob==5)
+  mon<-(3*2-2)*prob3+(5*2-2)*prob5-2*(n-prob3-prob5)
+  return(mon)
+}
+
+#use Monte Carlo simulation to create 100 random numbers
+mc<-round(runif(100,3,3000))
+
+#generate the amount of money after these random number of games
+dice<-c()
+for(i in 1:length(mc)){
+  dice<-c(dice, play_dice(mc[i]))
+}
+
+#get the mean number of games, if it's near zero then it's a fair game
+mean(dice)
+```
+
+Here I choose to use built-in R vectorized function as it takes the least time to get output. The principle here is first generate several random numbers as the number of games, then use each of them in function to get the amount of money won in each game, combine them together and get the sum of it, if the mean is close to 0, it's a fair game. However it's not.
+
+## problem2: linear regression
+
+Download the cars data set available at https://corgis-edu.github.io/corgis/csv/cars/. The goal is to examine the relationship between torque and highway gas mileage.
+
+a, The names of the variables in this data are way too long. Rename the columns of the data to more reasonable lengths.
+
+```{r}
+#read in the file
+car<-read.csv("C:\\Users\\DELL\\Downloads\\cars.csv")
+
+#change the name of the file
+colnames(car)<-c("height","length","width","driveline","engine type","hybrid or not","forward gear number","transmission","city mpg","fuel type","highway mpg","classification","ID","make","model year","year","horsepower","torque")
+```
+
+b, Restrict the data to cars whose Fuel Type is “Gasoline”.
+
+```{r}
+#get cars with gasoline
+car<-car[which(car$`fuel type`=="Gasoline"),]
+```
+
+Here restrict cars to those using gasoline.
+
+c, Examine the distribution of highway gas mileage. Consider whether a transformation could be used. If so, generate the transformed variable and use this variable going forward. If not, provide a short justification.
+
+```{r}
+#draw the histogram of mpg
+hist(car$`highway mpg`)
+
+#it seems that there exist high skew in mpg, use log transformation to adjust it
+car$`highway mpg`<-log(car$`highway mpg`)
+hist(car$`highway mpg`)
+```
+
+Here first draw the original histogram, and it seems that highway mpg is highly left skewed, which requires a transformation. Log transformation is used to solve it, after which the histogram is better.
+
+d, Fit a linear regression model predicting MPG on the highway. The predictor of interest is torque. Control for:
+
+The horsepower of the engine
+
+All three dimensions of the car
+
+The year the car was released, as a categorical variable.
+
+Briefly discuss the estimated relationship between torque and highway MPG. Be precise about the interpretation of the estimated coefficient.
+
+```{r}
+#convert year as factor
+car$year<-as.factor(car$year)
+
+#conduct regression
+fit<-lm(car$`highway mpg`~car$torque+car$horsepower+car$height+car$length+car$width+car$year)
+
+#get the summary of regression
+summary(fit)
+```
+
+For 1 lb/ft increase of torque of engine, the mile-per-galon of this car on highway will decrease 0.002294.
+
+e, It seems reasonable that there may be an interaction between torque and horsepower. Refit the model (with lm) and generate an interaction plot, showing how the relationship between torque and MPG changes as horsepower changes. Choose reasonable values of torque, and show lines for three different reasonable values of horsepower.
+
+```{r}
+#first, get the interactions package
+library("interactions")
+
+#reconduct the regression into what the question says
+fit1<-lm(`highway mpg`~torque*horsepower+height+length+width+year,data=car)
+
+#get the summary of regression
+summary(fit1)
+
+#get the number of data each year, choose the year with most data to continue
+table(car$year)
+
+#draw the interaction plot with all horsepower
+interact_plot(fit1,"torque","horsepower",at=list(year=factor(2011),levels(car$year)))
+
+#three horsepower are chosen by using the least, biggest and median number
+car1=car[which(car$year==2011),ncol(car)-1]
+m1=min(car1)
+m2=max(car1)
+m3=median(car1)
+
+#draw the interaction plot with three chosen horsepower
+interact_plot(fit1,"torque","horsepower",c(m1,m3,m2))
+```
+
+Here I first use interact_plot function with different years, but it turns out that the interaction plots of different years are similar, so instead I use the year with most data. As to reasonable horsepower, I use the biggest, smallest and median number at 2011(year chosen). With the increase of horse power, the decrease of highway mpg tends to be slower with the increase of lb/ft of torque.
+
+f, Calculate $\hat{\beta}$ from d. manually (without using lm) by first creating a proper design matrix, then using matrix algebra to estimate \(\hat{\beta}\). Confirm that you get the same result as lm did prior.
+
+```{r}
+#since \(\hat{\beta}\)=\((X^TX)^{-1}X^TY\), first get X, which is combination of all predictors and control
+X<-cbind(1,car$torque,car$horsepower,car$height,car$length,car$width,car$year)
+
+#get Y
+Y<-car$`highway mpg`
+
+#conduct \(\hat{\beta}\)=\((X^TX)^{-1}X^TY\) and get \(\hat{\beta}\)
+beta<-solve(t(X)%*%X)%*%t(X)%*%Y
+beta
+```
+
+Since $\hat{\beta}$=\((X^TX)^{-1}X^TY\), I get the $\hat{\beta}$ by first get X, Y, then calculate \((X^TX)^{-1}X^TY\). The result is quite similar to that obtained from (d).
+
+Github link:
