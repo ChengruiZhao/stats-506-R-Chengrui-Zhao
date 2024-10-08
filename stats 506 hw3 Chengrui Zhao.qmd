@@ -1,0 +1,353 @@
+---
+title: "stats 506 hw3"
+author: "Chengrui Zhao"
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+citation and github link will be written at the bottom
+
+## Problem 1
+
+This problem will require things have not covered. Use the R help, or online resources, to figure out the appropriate command(s). Use citation as necessary.
+
+For the “nice tables”, use a package such as kable or stargazer (or find another package) to generate HTML/LaTeX tables for inclusion. The results should be clearly labeled, rounded appropriately, and easily readable.
+
+a, Download the file VIX_D from this location, and determine how to read it into R. Then download the file DEMO_D from this location. Note that each page contains a link to a documentation file for that data set. Merge the two files to create a single data.frame, using the SEQN variable for merging. Keep only records which matched. Print out your total sample size, showing that it is now 6,980.
+
+```{r}
+#upload the package needed
+library(foreign)
+
+#read in files
+vix<-read.xport("C:\\Users\\DELL\\Downloads\\VIX_D.XPT")
+demod<-read.xport("C:\\Users\\DELL\\Downloads\\DEMO_D.XPT")
+
+#combine all files
+mer<-merge(vix,demod,by.x="SEQN",by.y="SEQN",all=F)
+
+#get the number of data now
+nrow(mer)
+```
+
+Here I searched for how to open XPT files and the related citation link is written at the bottom of this file, I use merge to merge all files, and it turns out there exist 6980 rows of data.
+
+b, Without fitting any models, estimate the proportion of respondents within each 10-year age bracket (e.g. 0-9, 10-19, 20-29, etc) who wear glasses/contact lenses for distance vision. Produce a nice table with the results.
+
+```{r}
+#upload the package needed
+library(kableExtra)
+
+#get all the proportions, here there do exist some NA data and to deal with it, I eliminate all of them while counting the sum, meanwhile make all number to the nearest three digits
+proportion<-c(nrow(mer[which(mer$RIDAGEYR>=0 & mer$RIDAGEYR<=9 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=0 & mer$RIDAGEYR<=9 & is.na(mer$VIQ220)==F),]),round(nrow(mer[which(mer$RIDAGEYR>=10 & mer$RIDAGEYR<=19 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=10 & mer$RIDAGEYR<=19 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=20 & mer$RIDAGEYR<=29 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=20 & mer$RIDAGEYR<=29 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=30 & mer$RIDAGEYR<=39 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=30 & mer$RIDAGEYR<=39 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=40 & mer$RIDAGEYR<=49 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=40 & mer$RIDAGEYR<=49 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=50 & mer$RIDAGEYR<=59 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=50 & mer$RIDAGEYR<=59 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=60 & mer$RIDAGEYR<=69 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=60 & mer$RIDAGEYR<=69 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=70 & mer$RIDAGEYR<=79 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=70 & mer$RIDAGEYR<=79 & is.na(mer$VIQ220)==F),]),3),round(nrow(mer[which(mer$RIDAGEYR>=80 & mer$RIDAGEYR<=89 & mer$VIQ220==1),])/nrow(mer[which(mer$RIDAGEYR>=80 & mer$RIDAGEYR<=89 & is.na(mer$VIQ220)==F),]),3))
+
+#give kable better rownames
+Age_Group<- c("0~9","10~19","20~29","30~39","40~49","50~59","60~69","70~79","80~89")
+
+kab<-cbind(Age_Group,proportion)
+
+#due to no valid data in 0~9, the proportion here is NA, change it to 0
+kab[1,2]<-0
+
+#get kable
+knitr::kable(kab)
+```
+
+Here I get the proportion of wearing glasses for distant in all age group, and use kable to make a nicer table.
+
+c, Fit three logistic regression models predicting whether a respondent wears glasses/contact lenses for distance vision. Predictors:
+
+age
+
+age, race, gender
+
+age, race, gender, Poverty Income ratio
+
+Produce a table presenting the estimated odds ratios for the coefficients in each model, along with the sample size for the model, the pseudo-R\^2 , and AIC values.
+
+```{r}
+#Since there exist NA in response, eliminate them first
+mer<-mer[which(is.na(mer$VIQ220)==F),]
+mer<-mer[which(is.na(mer$RIDAGEYR)==F),]
+mer<-mer[which(is.na(mer$RIAGENDR)==F),]
+mer<-mer[which(is.na(mer$RIDRETH1)==F),]
+mer<-mer[which(is.na(mer$INDFMPIR)==F),]
+
+#eliminate those unknown data
+mer<-mer[which(mer$VIQ220!=9),]
+
+#change data into factor so that logistic model can be conducted
+mer$VIQ220<-as.factor(mer$VIQ220)
+mer$RIAGENDR<-as.factor(mer$RIAGENDR)
+mer$RIDRETH1<-as.factor(mer$RIDRETH1)
+
+#use glm models to get result of first model
+fit1<-glm(mer$VIQ220~mer$RIDAGEYR,family=binomial(link="logit"))
+summary(fit1)
+
+#to get the result clearer, conduct kable again for the first model
+kab1<-rbind(cbind(exp(coef(fit1))),"sample size"=nobs(fit1),"pseudo-R^2"=1-fit1$deviance/fit1$null.deviance,"AIC"=fit1$aic)
+knitr::kable(kab1)
+
+#use glm models to get result of second model
+fit2<-glm(mer$VIQ220~mer$RIDAGEYR+mer$RIDRETH1+mer$RIAGENDR,family=binomial(link="logit"))
+summary(fit2)
+
+#to get the result clearer, conduct table again for the second model
+kab2<-rbind(cbind(exp(coef(fit2))),"sample size"=nobs(fit2),"pseudo-R^2"=1-fit2$deviance/fit2$null.deviance,"AIC"=fit2$aic)
+knitr::kable(kab2,"simple")
+
+#use glm models to get result of third model
+fit3<-glm(mer$VIQ220~mer$RIDAGEYR+mer$RIDRETH1+mer$RIAGENDR+mer$INDFMPIR,family=binomial(link="logit"))
+summary(fit3)
+
+#to get the result clearer, conduct kable again for the third model
+kab3<-rbind(cbind(exp(coef(fit3))),"sample size"=nobs(fit3),"pseudo-R^2"=1-fit3$deviance/fit3$null.deviance,"AIC"=fit3$aic)
+knitr::kable(kab3,"simple")
+```
+
+Here use GLM to produce logistics models with binary distribution according to information from question. For the first model with age as predictor, odds ratio of age is around e\^(-0.024)=0.976, sample size=6246+1=6247,pseudo-R\^2=1-8115.9/8519.1=0.047, indicating that it doesn't fit well, AIC=8119.9
+
+The second one use age, race and gender as predictor, Since race and gender is also categorical, I view them as factors here too. odds ratio of age is e\^(-0.022)=0.978, race: other hispanic e\^(-0.155)=0.856, non-hispanic white e\^(-0.639)=0.528, non-hispanic black e\^(-0.257)=0.773, other race e\^(-0.633)=0.531, gender: female e\^(-0.502)=0.605, sample size=6246+1=6247, pseudo-R\^2=1-7935.1/8519.1=0.069, still not a good fit, AIC=7949.1, indicating that it's better than the first model.
+
+The third one uses age, race, gender and poverty income ratio as predictor, odds ratio of age is e\^(-0.022)=0.978, race: other hispanic e\^(-0.116)=0.89, non-hispanic white e\^(-0.502)=0.606, non-hispanic black e\^(-0.207)=0.813, other race e\^(-0.533)=0.587, gender: female e\^(-0.516)=0.597, poverty income ratio e\^(-0.114)=0.893. sample size=6246+1=6247, pseudo-R\^2=1-7893.8/8519.1=0.073, still not big, AIC=7909.8, indicating it's the most suitable model of three.
+
+d, From the third model from the previous part, test whether the odds of men and women being wears of glasess/contact lenses for distance vision differs. Test whether the proportion of wearers of glasses/contact lenses for distance vision differs between men and women. Include the results of the each test and their interpretation.
+
+```{r}
+#use glm models to get result of third model
+fit3<-glm(mer$VIQ220~mer$RIDAGEYR+mer$RIDRETH1+mer$RIAGENDR+mer$INDFMPIR,family=binomial(link="logit"))
+summary(fit3)
+```
+
+from c and the third model again here we can see the p-value for gender is less than 0.05, indicating that there do exist a difference between the glasses wearing for distant vision between men and women, the related coefficient is -0.516, e\^(-0.516)=0.597,0.597/(1-0.597)=1.481,so the odds of women wearing glasses is 1.481 times the odds of men wearing glasses.
+
+```{r}
+#get the table of men wearing glasses, men not wearing, women wearing glasses, women not wearing
+tab<-table(mer$VIQ220,mer$RIAGENDR)
+
+#use variables to represent these numbers
+menno<-tab[2,1]
+menyes<-tab[1,1]
+womenno<-tab[2,2]
+womenyes<-tab[1,2]
+
+#get the total number of men and women
+men<-menno+menyes
+women<-womenno+womenyes
+
+#conduct 2-sample test to get answer
+proportion2<-prop.test(c(menyes,womenyes),c(men,women))
+proportion2
+```
+
+here compare the proportion of men and women wearing glasses, p-value\<0.05 indicates that there do exist a significant differences between proportion of men and women wearing glasses, the proportion of men wearing glasses is 0.371 and for women is 0.476.
+
+## problem 2
+
+a, What year is the oldest movie from, and how many movies were released in that year? Answer this with a single SQL query.
+
+```{r}
+#upload packages needed
+library(DBI)
+library(RSQLite)
+
+#get the file 
+sakila<-dbConnect(SQLite(), "C:\\Users\\DELL\\Downloads\\sakila_master.db")
+
+#get all the oldest films and the year
+dbGetQuery(sakila,"
+           SELECT COUNT(title),release_year
+           FROM film
+           ORDER BY release_year
+           LIMIT 1
+           ")
+```
+
+here first get the package needed and select the suitable file from it, then get the answer by selecting films from the minimum release year, the oldest film is from 2006 and there are 1000 of them.
+
+b, What genre of movie is the least common in the data, and how many movies are of this genre?
+
+```{r}
+#method 1
+#get the things needed to build data frame from category
+category<-dbGetQuery(sakila,"
+                 SELECT name,category_id
+                 FROM category
+                 ")
+
+#get the things needed to build data frame from film_category
+number<-dbGetQuery(sakila,"
+                 SELECT category_id
+                 FROM film_category
+                 ")
+
+#build the table to see how many films are there in each genre
+tabforfilm<-table(number)
+
+#get the genre with minimum number of film
+filmmin<-which.min(tabforfilm)
+
+#build the data frame with the category name corresponding to the category id and the number of films in it
+data.frame(cbind(category[which(category$category_id==filmmin),1],tabforfilm[filmmin]))
+
+#method 2
+#directly get the least number of film in a film type with one query
+dbGetQuery(sakila,"
+                             SELECT category.name,COUNT(film_category.film_id)
+                             FROM category
+                                  INNER JOIN film_category on category.category_id=film_category.category_id
+                             GROUP BY category.name 
+                             ORDER BY COUNT(film_category.film_id) ASC
+                             LIMIT 1
+                             ")
+```
+
+This question is solved by two ways, first one is to get the things needed from two files respectively, then get the genre with least films by table, finally build the data frame based on the two data frames obtained from two files and table, the second method also involves using SQL to the two files involved, but meanwhile since we use SQL to get the answer directly, we can just use inner join to combine two data frames together and get what I want without building tables. use order by to make the category with least the first one and then limit to it. so the genre is Music with 51 film.
+
+c, Identify which country or countries have exactly 13 customers
+
+```{r}
+#method 1
+#get the data frame of countries and number of customers in it
+con<-as.data.frame(dbGetQuery(sakila,"
+                               SELECT COUNT(ID), country
+                               FROM customer_list
+                               GROUP BY country
+                               "))
+
+#get which country has 13 customers
+con[which(con$`COUNT(ID)`==13),]
+
+#method 2
+#directly get country with 13 customers with one query
+dbGetQuery(sakila,"
+                               SELECT COUNT(ID), country
+                               FROM customer_list
+                               GROUP BY country
+                               HAVING COUNT(ID)==13
+                               ")
+```
+
+This question is solved with two methods, first one is to get data frame of different countries and corresponding number of customers, then select the row with 13 customers. The second method also involves getting data frame of different countries and corresponding number of customers, but here directly get the country with 13 customers with having function in SQL. It turns out Argentina and Nigeria has 13 customers
+
+## Problem 3
+
+a, What proportion of email addresses are hosted at a domain with TLD “.com”? (in the email, “angrycat\@freemail.org”, “freemail.org” is the domain, and “.org” is the TLD (top-level domain).)
+
+```{r}
+#read in the file
+rec<-read.csv("C:\\Users\\DELL\\Downloads\\us-500\\us-500.csv")
+
+#get the number of residents with .com end in email
+rec1<-rec[grep(".com$",rec[,ncol(rec)-1]),]
+
+#get the proportion
+nrow(rec1)/nrow(rec)
+```
+
+here use regular expression to get the rows with email end in .com and conduct the calculation, the proportion is 0.732
+
+b, What proportion of email addresses have at least one non alphanumeric character in them? (Excluding the required “\@” and “.” found in every email address.)
+
+```{r}
+#upload the package needed
+library(stringr)
+
+#get all email address
+rec2<-rec[,ncol(rec)-1]
+
+#eliminate all alphanumeric character for following analysis
+rec2<-str_replace_all(rec2,"[[:alnum:]]","")
+
+#since the regular @ and . are eliminated, we need to find those beyond @.
+j<-0
+for(i in 1:length(rec2)){
+  if(rec2[i]!="@."){
+    j<-j+1
+  }
+}
+
+#get the proportion
+j/length(rec2)
+```
+
+here first eliminate all alphanumeric character in email so that for normal email only "\@."(since in domain and TLD there are no extra special character), then get the proportion of email that's not "\@." currently. The proportion is 0.506
+
+c, What are the top 5 most common area codes amongst all phone numbers? (The area code is the first three digits of a standard 10-digit telephone number.)
+
+```{r}
+#get the phone number 2
+rec3<-rec[,ncol(rec)-2]
+
+#get the phone number 1
+rec4<-rec[,ncol(rec)-3]
+
+#subtract both to their area code
+for(i in 1:length(rec3)){
+  rec3[i]<-substr(rec3[i],1,3)
+}
+for(i in 1:length(rec3)){
+  rec4[i]<-substr(rec4[i],1,3)
+}
+
+#test whether two area codes are the same, and it turns out they are the same
+for(i in 1:length(rec3)){
+  if(rec3[i]!=rec4[i]){
+    print(F)
+    break
+  }
+}
+
+#use table to get the answer
+sor<-sort(table(rec3),decreasing=T)
+head(sor,5)
+```
+
+here we have two column of phone number, so the first thing is to subtract area code to see whether they are the same, it turns out that they are the same so now just see the table of one column of phone number and see its code, it turns out that 973, 410, 215, 212 and 201 are the most common.
+
+d, Produce a histogram of the log of the apartment numbers for all addresses. (You may assume any number at the end of the an address is an apartment number.)
+
+```{r}
+#get the address
+rec5<-rec[,4]
+
+#get those address with an apartment number
+rec5<-rec5[grep("#",rec5)]
+
+#get those apartment number
+der<-c()
+a<-c()
+for(i in 1:length(rec5)){
+  der[i]<-gregexpr("#",rec5[i])[[1]][1]
+  a[i]<-substr(rec5[i],der[i]+1,nchar(rec5[i]))
+}
+
+#turn them into number so that we can draw histogram
+a<-as.numeric(a)
+
+#draw histogram
+hist(log(a))
+```
+
+here since not all address has apartment number and some of them has number at the end but that's the number of corresponding road not the apartment number, I first get the address with the "\#" and subtract the number after it which are are apartment numbers, then use them to draw the histogram
+
+e, Benford’s law is an observation about the distribution of the leading digit of real numerical data. Examine whether the apartment numbers appear to follow Benford’s law. Do you think the apartment numbers would pass as real data?
+
+```{r}
+#since this law is about the leading digit, subtract the leading digit
+for(i in 1:length(a)){
+  a[i]<-substr(a[i],1,1)
+}
+
+#draw relevant histogram
+hist(as.numeric(a))
+```
+
+Here I first get all leading digits, if it satisfies Benford's Law, then it will be a decreasing trend with number as 1 really high and 9 really low. However, here both 1 and 9 are high and others are relatively low, so it diesn't satisfy Benford's Law.
+
+Citation: https://www.ms.uky.edu/\~mai/splus/MoveDataFromSAStoR.html (link for how to open xpt)
+
+Github link:
