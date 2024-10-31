@@ -1,0 +1,270 @@
+---
+title: "stats 506 hw4"
+author: "Chengrui Zhao"
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+## Problem 1- tidyverse
+
+Use the tidyverse for this problem. In particular, use piping and dplyr as much as you are able. Note: Use of any deprecated functions will result in a point loss.
+
+Install and load the package nycflights13.
+
+a, Generate a table (which can just be a nicely printed tibble) reporting the mean and median departure delay per airport. Generate a second table (which again can be a nicely printed tibble) reporting the mean and median arrival delay per airport. Exclude any destination with under 10 flights. Do this exclusion through code, not manually.
+
+Additionally,
+
+Order both tables in descending mean delay.
+
+Both tables should use the airport names not the airport codes.
+
+Both tables should print all rows.
+
+```{r}
+# get all files needed
+library(tidyverse)
+library(dplyr)
+library(nycflights13)
+
+#get all the rows needed satisfying requirements
+delateinfo<-flights%>%
+  select(dep_delay,origin)%>%
+  mutate(counts=1)%>%
+  group_by(origin)%>%
+  mutate(sum=sum(counts))%>%
+  filter(sum>=10)
+
+#get the mean and median as well as sorting data
+delate<-delateinfo%>%
+  summarize(mean=mean(dep_delay,na.rm = T),median=median(dep_delay, na.rm=T))%>%
+  left_join(airports, by=join_by(origin == faa))%>%
+  select(name,mean,median)%>%
+  arrange(desc(mean))
+delate
+
+#get all the rows needed satisfying requirements
+arlateinfo<-flights%>%
+  select(arr_delay,dest)%>%
+  mutate(counts=1)%>%
+  group_by(dest)%>%
+  mutate(sum=sum(counts))%>%
+  filter(sum>=10)
+
+#get the mean and median as well as sorting data
+arlate<-arlateinfo%>%
+  summarize(mean=mean(arr_delay,na.rm = T),median=median(arr_delay, na.rm=T))%>%
+  left_join(airports, by=join_by(dest== faa))%>%
+  select(name,mean,median)%>%
+  arrange(desc(mean))
+
+#this line is added so that when rendering into html all the lines are presented
+options(tibble.print_max = nrow(arlate))
+
+#get answer
+arlate
+```
+
+The tibbles are created by first getting the required columns, then generate the numbers of airports and delete those with number less than 10, then join the airports data so that the full names can be presented at the tibbles, eventually get the mean and median.
+
+b, How many flights did the aircraft model with the fastest average speed take? Produce a tibble with 1 row, and entries for the model, average speed (in MPH) and number of flights.
+
+```{r}
+# create the new column by miles dividing hours and make it grouped by carrier for future use
+speed<-flights %>%
+ left_join(planes, by = "tailnum") %>%
+ mutate(speedinmph=distance/(air_time/60),counts=1) %>%
+ group_by(model) 
+
+# get the answer with number and sum as well as sorting it so that only the first row will be shown
+speedmean=speed%>%
+ summarize(averagespeed= mean(speedinmph, na.rm = TRUE),number=sum(counts)) %>%
+ arrange(desc(averagespeed))%>%
+ filter(row_number()==1)
+speedmean
+```
+
+So it can be seen that the fastest carrier is 777-222 and there are 4 flights
+
+## Problem 2
+
+Load the Chicago NNMAPS data we used in the visualization lectures. Write a function get_temp() that allows a user to request the average temperature for a given month.
+
+```{r}
+#read in file
+nnmaps<-read.csv("C:\\Users\\DELL\\Downloads\\chicago-nmmaps.csv")
+
+#' Function to create a tool to return the temperature of chicago with given requirements
+#' 
+#' @param month a month number or character
+#' @param year a year number
+#' @param data from which the data is presented
+#' @param celsius whether use celsius or not
+#' @param average_fn use which way to get results
+#' @return the palindrome next to the given number
+get_temp<-function(month,year,data,celsius=F,average_fn=mean){
+
+# rename columns so that they aren't the same name as parameters
+  colnames(data)[colnames(data) == "month"]<-"months"
+  colnames(data)[colnames(data) == "month_numeric"]<-"months_numeric"
+  colnames(data)[colnames(data) == "year"]<-"years"
+  
+# get variables ready for future use
+  monthword=c("Jan", "Feb","Mar", "Apr","May", "Jun", "Jul","Aug", "Sep","Oct", "Nov","Dec","January","February","March","April","May","June","July","August","Septmber","October","November","December")
+
+# exclude conditions where months and years are beyond the data
+  if((month<1)|(month>12)){
+    if(!(month %in% monthword)){
+      return("Error: month must be between 1 and 12")
+    }
+  }
+  if((year<1997)|(year>2000)){
+    return("Error: year must be between 1997 and 2000")
+  }
+  if(month %in% monthword){
+    month=substr(month,1,3)
+  }
+  
+#get required number
+  chiweather1<-data%>%
+    filter((months==month)|(months_numeric==month))%>%
+    filter(year==years)
+  
+#get the results
+  chiweatheravg<-chiweather1%>%
+    summarize(result=average_fn(temp))
+  
+# allowing for specific conditions with celsius and average_fn
+  if(celsius==T){
+    chiweatheravg=(chiweatheravg-32)/1.8
+  }
+  return(chiweatheravg)
+}
+
+#test results
+get_temp("Apr", 1999, data = nnmaps)
+get_temp("Apr", 1999, data = nnmaps, celsius = TRUE)
+get_temp(10, 1998, data = nnmaps, average_fn = median)
+get_temp(13, 1998, data = nnmaps)
+get_temp(2, 2005, data = nnmaps)
+get_temp("November", 1999, data =nnmaps, celsius = TRUE,
+         average_fn = function(x) {
+           x %>% sort -> x
+           x[2:(length(x) - 1)] %>% mean %>% return
+         })
+```
+
+To solve this question, first rename the columns of original dataset so that their names won't be the same as parameters, then get the required rows with correct months and years, then consider specific conditions where months and years are out of data, or celsius is used or the way to calculate isn't with mean, finally get the answer.
+
+## Problem 3-visualization
+
+For each of the following, produce a publication-ready plot which demonstrates the answer to the question. Use your plot to support an argument for your question.
+
+a, Is there a change in the sales price in USD over time?
+
+```{r}
+#get packages needed
+library(ggplot2)
+
+#read in file
+art<-read.csv("C:\\Users\\DELL\\Downloads\\df_for_ml_improved_new_market.csv")
+
+# get the part of file needed
+art1<-art%>%
+  select(year,meanprice_year)%>%
+  group_by(year)
+
+#get the mean value
+artmean<-art1%>%
+  summarize(mean=mean(meanprice_year))
+
+#there are lots of choices of reflecting change of mean price each year, here use linear plot
+ggplot(artmean,aes(x=year,y=mean))+
+  geom_line()+
+  theme_minimal()+
+  theme(
+    text = element_text(size = 14, family = "serif"),  
+    axis.title = element_text(face = "bold"),  
+    legend.position = "top"
+  )+
+  labs(
+    title="linear plot of change in sales price in USD over time",
+    xlab="year",
+    ylab="mean price"
+  )
+```
+
+Looking at the plot, we see that there are lots of flucuations in the plot, so there do exist changes in sales over time, it decreased from 1997 to 1998, then rose in 1999 and stayed stable for one year, after that it decreased dramatically in 2001 and began to keep increasing until 2008, the decreased and stayed stable for one year, after which it began to increase again in 2011.
+
+b, Does the distribution of genre of sales across years appear to change?
+
+```{r}
+#get the rows needed
+art2<-art%>%
+  select(year,Genre___Photography,Genre___Print,Genre___Sculpture,Genre___Painting,Genre___Others)%>%
+  group_by(year)
+
+#get the sum of them
+artgenre<-art2%>%
+  summarize(Genre___Photography=sum(Genre___Photography),Genre___Print=sum(Genre___Print),Genre___Sculpture=sum(Genre___Sculpture),Genre___Painting=sum(Genre___Painting),Genre___Others=sum(Genre___Others))
+
+# get the numbers from the tibble above for the use of building a new tibble
+total<-c()
+for(i in 1:nrow(artgenre)){
+  total<-c(total,unlist(artgenre[i,-1]))
+}
+
+#build the tibble of years, different genre and their corresponding numbers
+art3<-tibble(year=rep(artgenre$year,each=5),genre=rep(c("Genre___Photography","Genre___Print","Genre___Sculpture","Genre___Painting","Genre___Others"),times=16),number=total)
+
+#there are lots of ways to draw plots about changes in proportion of different genre each year, here use bar plot.
+ggplot(art3,aes(x=factor(year),y=number,fill=factor(genre)))+
+  geom_bar(stat="identity",position = "dodge")+
+  theme_minimal()+
+  theme(
+    text = element_text(size = 10, family = "serif"),  
+    axis.title = element_text(face = "bold"),  
+    legend.position = "top"
+  )+
+  labs(
+    title="distribution of types of sale in each year",
+    x="year",
+    y="number"
+  )
+```
+
+Looking at the plot, we see that the distribution of genres of sales do change, in 1997 and 1998 the main genres are others and paintings, but from 1999 photography began to increase a lot and became one of the major genre since then, the other major genre is sculpture which began to increase in 2000, the print was always in a minor distribution.
+
+c, How does the genre affect the change in sales price over time?
+
+```{r}
+#here I plan to combine two figures together, since the coordinates are different, a proportion needs to be calculated so that we can use different coordinates in the future
+scales<-max(art3$number)/max(artmean$mean) 
+
+# There are several ways to draw how the genres influence the mean sales every year, here I choose to combine genre distribution and man sale wach year together so that we can see the relationship intuitively.
+ggplot() +
+  geom_bar(data=art3, aes(x=year, y=number, fill=factor(genre)), stat="identity", position="dodge", alpha=0.6) +
+  geom_line(data=artmean, aes(x=year, y=mean*scales), size=1) +
+  scale_y_continuous(
+    name="number of sales",
+    sec.axis=sec_axis(~./scales, name="mean price")
+  ) +
+  theme_minimal() +
+  theme(
+    text=element_text(size=10, family="serif"),
+    axis.title=element_text(face="bold"),
+    legend.position="top"
+  ) +
+  labs(
+    title="change in sales price with distribution of genre every year",
+    x="year"
+  )
+```
+
+Looking at the plot, we see that the more distribution of photography and sculpture has, the more sales there will be, for the other three the relationship between them and mean sales each year isn't obvious
+
+Github link:
+
+https://github.com/ChengruiZhao/stats-506-R-Chengrui-Zhao
