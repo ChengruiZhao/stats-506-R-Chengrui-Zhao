@@ -1,0 +1,503 @@
+---
+title: "stats 506 hw5"
+author: "Chengrui Zhao"
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+## Problem 1-OOP programming
+
+Create a class to represent rational numbers (numbers of the form a/b for integers b and a). Do this using S4.
+
+For the rational class, define the following:
+
+A constructor
+
+A validator that ensures the denominator is non-zero.
+
+A show method.
+
+A simplify method, to obtain the simplest form (e.g. simplify(2/4) produces 1/2).
+
+A quotient method (e.g. quotient(3/7) produces .42857143...). It should support a digits argument but only in the printing, not the returned result (Hint: what does print return?).
+
+Addition, subtraction, multiplication, division. These should all return a rational.
+
+You’ll (probably) need GCD and LCM as part of some of these calculations; include these functions using Rcpp. Even if you don’t need these functions for another calculation, include them.
+
+```{r}
+#get all packages needed
+library(Rcpp)
+
+#get functions needed from Cpp
+cppFunction("
+int gcd(int a, int b) {
+    while (b != 0) {
+        int t = b;
+        b = a % b;
+        a = t;
+    }
+    return abs(a);
+}
+
+
+
+int lcm(int a, int b) {
+    return abs(a * (b / gcd(a, b)));
+}
+")
+
+#' Function to create lcm
+#' 
+#' @param a one of number
+#' @param b the other number
+#' @return the lcm of a and b
+lcm<-function(a,b){
+  return (abs(a * (b / gcd(a, b))))
+}
+
+#create constructor
+setClass("rational", slots = c(a = "integer", b = "integer"))
+
+#create validator
+#' Function to exclude a/b where b=0
+#' 
+#' @param object rational number being tested
+#' @return whether object can pass the filter that b isn't 0
+setValidity("rational", function(object) {
+  if (object@b == 0) {
+    return("Error: b can't be 0")
+  }
+  TRUE
+})
+
+#' Function to renew a/b for future use
+#' 
+#' @param a the nominator
+#' @param b the denominator
+#' @return the rational number
+rational <- function(a, b) {
+  new("rational", a = as.integer(a), b = as.integer(b))
+}
+
+#create method simplify, here create the generic first
+#' Function to create simplify
+#' 
+#' @param object 
+#' @return the simplify
+setGeneric("simplify", function(object) {
+  standardGeneric("simplify")
+})
+
+#' Function to create simplify
+#' 
+#' @param object rational being tested
+#' @return the simplified object
+setMethod("simplify", "rational", function(object) {
+  gcdnum <- gcd(as.integer(object@a), as.integer(object@b))
+  object@a <- as.integer(object@a / gcdnum)
+  object@b <- as.integer(object@b / gcdnum)
+  object
+})
+
+#here create four equation method so that the result is still in a/b form
+#' Function to create rational number of sum
+#' 
+#' @param e1 one number
+#' @param e2 the other number
+#' @return the sum of two numbers
+setMethod("+", signature(e1 = "rational", e2 = "rational"), function(e1, e2) {
+  commonlcm <- lcm(as.integer(e1@b), as.integer(e2@b))  # Ensure integer type
+  num1 <- e1@a * (commonlcm / e1@b)
+  num2 <- e2@a * (commonlcm / e2@b)
+  rational(num1 + num2, commonlcm)
+})
+
+#' Function to create rational number of difference
+#' 
+#' @param e1 one number
+#' @param e2 the other number
+#' @return the difference of two numbers
+setMethod("-", signature(e1 = "rational", e2 = "rational"), function(e1, e2) {
+  commonlcm <- lcm(as.integer(e1@b), as.integer(e2@b))
+  num1 <- e1@a * (commonlcm / e1@b)
+  num2 <- e2@a * (commonlcm / e2@b)
+  rational(num1 - num2, commonlcm)
+})
+
+#' Function to create rational number of product of multiplication
+#' 
+#' @param e1 one number
+#' @param e2 the other number
+#' @return the product of multiplication of two numbers
+setMethod("*", signature(e1 = "rational", e2 = "rational"), function(e1, e2) {
+  rational(e1@a * e2@a, e1@b * e2@b)
+})
+
+#' Function to create rational number of product of division
+#' 
+#' @param e1 one number
+#' @param e2 the other number
+#' @return the product of division of two numbers
+setMethod("/", signature(e1 = "rational", e2 = "rational"), function(e1, e2) {
+   if ((e2@a== 0)|(e1@a==0)) {
+     return("Error: Cannot divide by zero")
+     }
+   object=rational(e1@a * e2@b, e1@b * e2@a)
+   return(object)
+ })
+
+#create method quotient, set generic first
+#' Function to create quotient
+#' 
+#' @param object 
+#' @return the quotient
+setGeneric("quotient", function(object,digits=3) {
+  standardGeneric("quotient")
+})
+
+#' Function to create quotient
+#' 
+#' @param object rational being tested
+#' @return the quotiented object
+setMethod("quotient", "rational", function(object,digits=3) {
+   if (mode(digits)!="numeric"){
+     return("Error, digits must be number")
+   }
+   digits<-round(digits)
+   number<-as.numeric(object@a) / as.numeric(object@b)
+   print(number,digits=digits)
+ })
+
+#gt the last method of show so that the result of all above can be shown
+#' Function to create show
+#' 
+#' @param object rational being tested
+#' @return the object is shown
+setMethod("show", "rational", function(object) {
+  cat(object@a, "/", object@b, "\n")
+})
+```
+
+Here create rational with the requests in the question
+
+(b)Use your rational class to create three objects:
+
+r1: 24/6
+ 
+r2: 7/230
+ 
+r3: 0/4
+
+Evaluate the following code
+
+```{r}
+#create numbers using rational
+r1=rational(24,6)
+r2=rational(7,230)
+r3=rational(0,4)
+
+#run the code
+r1
+r3
+r1 + r2
+r1 - r2
+r1 * r2
+r1 / r2
+r1 + r3
+r1 * r3
+r2 / r3
+quotient(r1)
+quotient(r2)
+quotient(r2, digits = 3)
+quotient(r2, digits = 3.14)
+quotient(r2, digits = "avocado")
+q2 <- quotient(r2, digits = 3)
+q2
+quotient(r3)
+simplify(r1)
+simplify(r2)
+simplify(r3)
+```
+
+Here all the codes are run successfully, showing that the rational works
+
+c, Show that your validator does not allow the creation of rational’s with 0 denominator, and check other malformed input to your constructor.
+
+```{r,error=TRUE}
+#test condition that b=0
+rational(5,0)
+
+#test condition that the digits required in quotient is not a number
+quotient(r2, digits = "avocado")
+
+#test condition that in division the numerator of dividend is 0
+r2 / r3
+```
+
+Here tests three malformed condition and it seems that the validator works
+
+## Problem 2-plotly
+
+Let’s revisit the art data from the last problem set. Use plotly for these.
+
+a, Regenerate your plot which addresses the second question from last time:
+
+Does the distribution of genre of sales across years appear to change?
+
+You may copy your plot from last time, or copy my plot from the solutions, or come up with your own new plot.
+
+```{r}
+#get packages needed
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+
+#read in file
+art<-read.csv("C:\\Users\\DELL\\Downloads\\df_for_ml_improved_new_market.csv")
+
+#get the rows needed
+art2<-art%>%
+  select(year,Genre___Photography,Genre___Print,Genre___Sculpture,Genre___Painting,Genre___Others)%>%
+  group_by(year)
+
+#get the sum of them
+artgenre<-art2%>%
+  summarize(Genre___Photography=sum(Genre___Photography),Genre___Print=sum(Genre___Print),Genre___Sculpture=sum(Genre___Sculpture),Genre___Painting=sum(Genre___Painting),Genre___Others=sum(Genre___Others))
+
+# get the numbers from the tibble above for the use of building a new tibble
+total<-c()
+for(i in 1:nrow(artgenre)){
+  total<-c(total,unlist(artgenre[i,-1]))
+}
+
+#build the tibble of years, different genre and their corresponding numbers
+art3<-tibble(year=rep(artgenre$year,each=5),genre=rep(c("Genre___Photography","Genre___Print","Genre___Sculpture","Genre___Painting","Genre___Others"),times=16),number=total)
+
+#there are lots of ways to draw plots about changes in proportion of different genre each year, here use bar plot.
+plot1<-ggplot(art3,aes(x=factor(year),y=number,fill=factor(genre)))+
+  geom_bar(stat="identity",position = "dodge")+
+  theme_minimal()+
+  theme(
+    text = element_text(size = 10, family = "serif"),  
+    axis.title = element_text(face = "bold"),  
+    legend.position = "top"
+  )+
+  labs(
+    title="distribution of types of sale in each year",
+    x="year",
+    y="number"
+  )
+
+#use ggplotly to get answer
+ggplotly(plot1)
+```
+
+Here the method is the same as in problem set except that the ggplotly is used
+
+(b)Generate an interactive plot with plotly that can address both of these questions from last time:
+
+Is there a change in the sales price in USD over time?
+
+How does the genre affect the change in sales price over time?
+
+```{r}
+#get the packages needed
+library(reshape2)
+
+# get the part of file needed
+art1<-art%>%
+  select(year,meanprice_year)%>%
+  group_by(year)
+
+#get the mean value
+artmean<-art1%>%
+  summarize(mean=mean(meanprice_year))
+ 
+#get the rows needed and use melt to make rows describing genres combined together
+art2<-art%>%
+  select(id,year,meanprice_year,Genre___Photography,Genre___Print,Genre___Sculpture,Genre___Painting,Genre___Others)%>%
+   melt(id.vars = c("id","year","meanprice_year"))%>%
+  filter(value==1)
+
+#get the mean price of different genres
+artgenre1<-art2%>%
+ group_by(year, variable) %>%
+ summarize(meanprice=mean(meanprice_year))
+artgenre1<- artgenre1 %>%
+  arrange(variable, year)
+
+#create a big data frame with data from both the first and second picture for future use
+artmean1<-data.frame(year=rep(1,each=61),mean=rep(1,each=61))
+artmean<-rbind(artmean,artmean1)
+names(artgenre1)[1]<-"year1"
+totaldata<-cbind(artmean,artgenre1)
+
+# create the combination of plots with the button to switch between plots
+plot_ly(data = totaldata) %>%
+  add_lines(x = ~year[1:16], y = ~mean[1:16], visible = TRUE, name = "Overall") %>%
+  add_lines(x = ~year1[1:16], y = ~meanprice[1:16], visible = FALSE, name = "Photography") %>%
+  add_lines(x = ~year1[17:29], y = ~meanprice[17:29], visible = FALSE, name = "Print") %>%
+  add_lines(x = ~year1[30:45], y = ~meanprice[30:45], visible = FALSE, name = "Sculpture") %>%
+  add_lines(x = ~year1[46:61], y = ~meanprice[46:61], visible = FALSE, name = "Painting") %>%
+  add_lines(x = ~year1[62:77], y = ~meanprice[62:77], visible = FALSE, name = "Others") %>%
+  layout(
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = list(
+          list(
+            method = "update",
+            args = list(list(visible = list(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE)),
+                        list(yaxis = list(title = "Overall Mean Price (USD)"))),
+            label = "Overall"
+          ),
+          list(
+            method = "update",
+            args = list(list(visible = list(FALSE, TRUE, FALSE, FALSE, FALSE, FALSE)),
+                        list(yaxis = list(title = "Mean Price by Photography"))),
+            label = "Photography"
+          ),
+          list(
+            method = "update",
+            args = list(list(visible = list(FALSE, FALSE, TRUE, FALSE, FALSE, FALSE)),
+                        list(yaxis = list(title = "Mean Price by Print"))),
+            label = "Print"
+          ),
+          list(
+            method = "update",
+            args = list(list(visible = list(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE)),
+                        list(yaxis = list(title = "Mean Price by Sculpture"))),
+            label = "Sculpture"
+          ),
+          list(
+            method = "update",
+            args = list(list(visible = list(FALSE, FALSE, FALSE, FALSE, TRUE, FALSE)),
+                        list(yaxis = list(title = "Mean Price by Painting"))),
+            label = "Painting"
+          ),
+          list(
+            method = "update",
+            args = list(list(visible = list(FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)),
+                        list(yaxis = list(title = "Mean Price by Others"))),
+            label = "Others"
+          )
+        )
+      )
+    ),
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Mean Price (USD)")
+  )
+```
+
+Here first get all data needed for plots, then combine them together so that we can use plotly on plots, then use plotly on plots with the button to switch between them.
+
+## Problem 3-data.table
+
+Repeat problem set 4, question 1, using data.table.
+
+a
+
+```{r}
+# get all files needed
+library(tidyverse)
+library(dplyr)
+library(nycflights13)
+library(data.table)
+
+#turn the data into data.table for future use
+delateinfo<-as.data.table(flights)
+airports1<-as.data.table(airports)
+
+#get all rows needed
+delateinfo<-delateinfo[,c("dep_delay","origin")]%>%
+  mutate(counts=1)
+
+#create a new variable to eliminate those airports with less than 10 planes
+delatesum<-delateinfo[, .(sum=sum(counts)), by = origin]
+
+#eliminate those airports with less than 10 planes
+delatesum<-delatesum[sum>=10]
+for(i in 1:nrow(delateinfo)){
+   if (!(delateinfo[i,2] %in% delatesum$origin)){
+     delateinfo=delateinfo[-i,2]
+   }
+ }
+
+#get the mean and median
+delate<-delateinfo[,.(mean=mean(dep_delay,na.rm=T),median=median(dep_delay,na.rm=T)),by=origin]
+
+#merge data to get complete name of airports
+delate<- merge(delate,airports1,by.x = "origin", by.y = "faa", all.x = TRUE)
+delate<-delate[,c("name","mean","median")]
+
+# sort data
+delate<-delate[order(-mean),]
+
+#show data
+delate
+
+#turn the data into data.table for future use
+arlateinfo<-as.data.table(flights)
+airports1<-as.data.table(airports)
+
+#get all the rows needed satisfying requirements
+arlateinfo<-arlateinfo[,c("arr_delay","dest")]%>%
+  mutate(counts=1)
+
+#create a new variable to eliminate those airports with less than 10 planes
+arlatesum<-arlateinfo[, .(sum=sum(counts)), by = dest]
+arlatesum<-arlatesum[sum>=10]
+
+#eliminate those airports with less than 10 planes
+for (i in nrow(arlateinfo):1) { 
+  if (!(arlateinfo[i, 2] %in% arlatesum$dest)) { 
+    arlateinfo <- arlateinfo[-i, ] 
+  }
+}
+
+#get the mean and median 
+arlate<-arlateinfo[,.(mean=mean(arr_delay,na.rm=T),median=median(arr_delay,na.rm=T)),by=dest]
+
+#merge data to get complete name of airports
+arlate<- merge(arlate,airports1,by.x = "dest", by.y = "faa", all.x = TRUE)
+arlate<-arlate[,c("name","mean","median")]
+
+#sort data
+arlate<-arlate[order(-mean),]
+
+#this line is added so that when rendering into html all the lines are presented
+options(arlate.print.ncols = Inf)
+
+#show data
+print(arlate)
+```
+
+Here the method is similar to that in last problem set except that the data.table is used instead of tibble
+
+(b)
+
+```{r}
+#turn data into data.table for future use
+speed<-as.data.table(flights)
+planes1<-as.data.table(planes)
+
+# create the new column by miles dividing hours and make it grouped by carrier for future use
+speed<- merge(speed,planes1,by= "tailnum", all.x = TRUE)%>%
+  mutate(speedinmph=distance/(air_time/60),counts=1) 
+
+# get the answer with number and sum as well as sorting it so that only the first row will be shown
+speedmean<-speed[,.(averagespeed= mean(speedinmph, na.rm =TRUE), number=sum(counts)), by=model]
+speedmean<-speedmean[order(-averagespeed),]
+speedmean<-speedmean[1,]
+speedmean
+```
+
+Here the method is similar to that in last problem set except that the data.table is used instead of tibble
+
+Github link:
+
+https://github.com/ChengruiZhao/stats-506-R-Chengrui-Zhao
