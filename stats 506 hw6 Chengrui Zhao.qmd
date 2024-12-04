@@ -65,9 +65,13 @@ totalboots0<-tapply(average$RF,average$teamID,function(x){
   return(totalsd)
 })
 totalboots0<-data.frame(totalboots0)
+
+#get the final result
+mean1<-mean(totalboots0[,1])
+mean1
 ```
 
-So here since it's the first method, we need to get the mean RF for each team first, then calculate individual RFs inside each groups so that we can use them for bootstrap, apply bootstrap to each team using tapply to get the sd of RF for each team
+So here since it's the first method, we need to get the mean RF for each team first, then calculate individual RFs inside each groups so that we can use them for bootstrap, apply bootstrap to each team using tapply to get the sd of RF for each team, then combine them by getting the mean to get final result.
 
 2, Using parallel processing with the parallel package.
 
@@ -110,7 +114,10 @@ stopCluster(cl)
 
 # Combine the team IDs with their corresponding standard deviations into a data frame
 totalboots_df <- data.frame(teamID = unique(average$teamID),sd_RF = unlist(totalboots))
-totalboots_df
+
+#get result
+mean2<-mean(totalboots_df[,2])
+mean2
 ```
 
 Since I use the computer with Windows, I can't use forking, so I use socket instead. First build calculation for one single iter, then build the cluster with all variable, exporting time to each iter, eventually use parLapply to conduct bootstrap parallelly to get the results.
@@ -144,7 +151,10 @@ totalboots <- future_lapply(unique(average$teamID), function(team) {
 
 # turn the result into data.frame
 result_df <- data.frame(teamID = unique(average$teamID), sd_bootstrap = unlist(totalboots))
-print(result_df)
+
+#get result
+mean3<-mean(result_df[,2])
+mean3
 ```
 
 Here use future, first due to the windows system I use multisession to get multiple workrs, then conduct bootstrap using future_lapply
@@ -275,7 +285,8 @@ totalboots<-tapply(average$RF,average$teamID,function(x){
     total<-c(total,mean(sample(x,length(x),replace = TRUE)))
   }
   totalsd<-sd(total)
-  return(totalsd)
+  #get the final result
+mean1<-mean(totalboots0[,1])
 })
 })
 
@@ -316,6 +327,9 @@ stopCluster(cl)
 
 # Combine the team IDs with their corresponding standard deviations into a data frame
 totalboots_df <- data.frame(teamID = unique(average$teamID),sd_RF = unlist(totalboots))
+
+#get result
+mean2<-mean(totalboots_df[,2])
 })
 
 # time taken for the operation of future bootstrap
@@ -342,6 +356,9 @@ totalboots <- future_lapply(unique(average$teamID), function(team) {
 
 # turn the result into data.frame
 result_df <- data.frame(teamID = unique(average$teamID), sd_bootstrap = unlist(totalboots))
+
+#get result
+mean3<-mean(result_df[,2])
 })
 ```
 
