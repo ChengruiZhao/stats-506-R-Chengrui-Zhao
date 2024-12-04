@@ -3172,37 +3172,44 @@ Attaching package: &#39;dplyr&#39;</code></pre>
 <span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>  totalsd<span class="ot">&lt;-</span><span class="fu">sd</span>(total)</span>
 <span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(totalsd)</span>
 <span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>totalboots0<span class="ot">&lt;-</span><span class="fu">data.frame</span>(totalboots0)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>totalboots0<span class="ot">&lt;-</span><span class="fu">data.frame</span>(totalboots0)</span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a><span class="co">#get the final result</span></span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>mean1<span class="ot">&lt;-</span><span class="fu">mean</span>(totalboots0[,<span class="dv">1</span>])</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>mean1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.03240907</code></pre>
 </div>
-<p>So here since it’s the first method, we need to get the mean RF for each team first, then calculate individual RFs inside each groups so that we can use them for bootstrap, apply bootstrap to each team using tapply to get the sd of RF for each team</p>
+</div>
+<p>So here since it’s the first method, we need to get the mean RF for each team first, then calculate individual RFs inside each groups so that we can use them for bootstrap, apply bootstrap to each team using tapply to get the sd of RF for each team, then combine them by getting the mean to get final result.</p>
 <p>2, Using parallel processing with the parallel package.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># upload all packages needed</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Set number of bootstrap samples</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>bootstrap_function <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    total <span class="ot">&lt;-</span> <span class="fu">c</span>(total, <span class="fu">mean</span>(<span class="fu">sample</span>(x, <span class="fu">length</span>(x), <span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sd</span>(total)</span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cluster with the number of available cores</span></span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)  </span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Export necessary variables and functions to each worker</span></span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">&quot;average&quot;</span>, <span class="st">&quot;times&quot;</span>, <span class="st">&quot;bootstrap_function&quot;</span>))</span>
-<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure that dplyr is available on each worker</span></span>
-<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterEvalQ</span>(cl, {<span class="fu">library</span>(dplyr)})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># upload all packages needed</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Set number of bootstrap samples</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>bootstrap_function <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    total <span class="ot">&lt;-</span> <span class="fu">c</span>(total, <span class="fu">mean</span>(<span class="fu">sample</span>(x, <span class="fu">length</span>(x), <span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sd</span>(total)</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cluster with the number of available cores</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)  </span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Export necessary variables and functions to each worker</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">&quot;average&quot;</span>, <span class="st">&quot;times&quot;</span>, <span class="st">&quot;bootstrap_function&quot;</span>))</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure that dplyr is available on each worker</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterEvalQ</span>(cl, {<span class="fu">library</span>(dplyr)})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[[1]]
 [1] &quot;dplyr&quot;     &quot;stats&quot;     &quot;graphics&quot;  &quot;grDevices&quot; &quot;utils&quot;     &quot;datasets&quot; 
@@ -3264,195 +3271,58 @@ Attaching package: &#39;dplyr&#39;</code></pre>
 [1] &quot;dplyr&quot;     &quot;stats&quot;     &quot;graphics&quot;  &quot;grDevices&quot; &quot;utils&quot;     &quot;datasets&quot; 
 [7] &quot;methods&quot;   &quot;base&quot;     </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform parallel bootstrap sampling for each team using parLapply</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">parLapply</span>(cl, <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bootstrap_function</span>(team_data)</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop the cluster after computation</span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the team IDs with their corresponding standard deviations into a data frame</span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>totalboots_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID),<span class="at">sd_RF =</span> <span class="fu">unlist</span>(totalboots))</span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>totalboots_df</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform parallel bootstrap sampling for each team using parLapply</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">parLapply</span>(cl, <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bootstrap_function</span>(team_data)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop the cluster after computation</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the team IDs with their corresponding standard deviations into a data frame</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>totalboots_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID),<span class="at">sd_RF =</span> <span class="fu">unlist</span>(totalboots))</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="co">#get result</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>mean2<span class="ot">&lt;-</span><span class="fu">mean</span>(totalboots_df[,<span class="dv">2</span>])</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>mean2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>    teamID       sd_RF
-1      SFN 0.005566383
-2      CHN 0.004673218
-3      CHA 0.005427493
-4      BOS 0.005384555
-5      SEA 0.006396963
-6      NYA 0.005317528
-7      NYN 0.005796259
-8      ATL 0.006009088
-9      ML1 0.014419055
-10     ML4 0.009021617
-11     CAL 0.008199192
-12     BAL 0.005693463
-13     LAN 0.005678207
-14     OAK 0.006696964
-15     HOU 0.006261071
-16     WAS 0.007763021
-17     MIN 0.005661131
-18     PH3 0.088791740
-19     BR2 0.026295223
-20     PHI 0.004770763
-21     BSN 0.009306347
-22     PIT 0.004664656
-23     BRO 0.010165709
-24     TL2 0.061252287
-25     CLE 0.005256066
-26     DET 0.005106619
-27     FLO 0.010022708
-28     MIL 0.008226321
-29     COL 0.007865847
-30     SLN 0.005039473
-31     KCA 0.006113031
-32     TBA 0.007955237
-33     KC1 0.012840244
-34     TRO 0.042650766
-35     WS1 0.012554879
-36     CIN 0.004943901
-37     SLA 0.017151250
-38     SDN 0.006019002
-39     TEX 0.006063854
-40     LAA 0.009211984
-41     ARI 0.008609588
-42     TOR 0.006412861
-43     SR1 0.038018790
-44     SL4 0.016694549
-45     RC1 0.081923224
-46     PH2 0.033461198
-47     BS1 0.031863520
-48     HR1 0.037112696
-49     CN1 0.023457309
-50     MIA 0.011998233
-51     TRN 0.030210460
-52     BL2 0.016257556
-53     SE1 0.044633208
-54     PT1 0.022956042
-55     WSU 0.034901388
-56     CL3 0.029029999
-57     ML3 0.062550376
-58     MON 0.008736364
-59     KCU 0.030459180
-60     ANA 0.015278659
-61     WS2 0.013494235
-62     MID 0.062139588
-63     CL2 0.022480383
-64     NY1 0.008998873
-65     KC2 0.025243793
-66     CL4 0.016665825
-67     BR1 0.043771851
-68     CL1 0.039671698
-69     ELI 0.062507699
-70     WS6 0.058830290
-71     LS1 0.056076340
-72     WS3 0.044981356
-73     NY2 0.023798461
-74     HAR 0.047454977
-75     PRO 0.022274904
-76     LS3 0.015271650
-77     SL5 0.029360490
-78     WS9 0.036299703
-79     BLN 0.018702115
-80     MLA 0.038820348
-81     IN3 0.030823694
-82     BRP 0.055699646
-83     CN3 0.047615331
-84     LS2 0.016189809
-85     PH1 0.028471326
-86     PHA 0.018048732
-87     FW1 0.051404319
-88     BLA 0.032588108
-89     PH4 0.014943938
-90     TL1 0.047127418
-91     WS8 0.021437120
-92     CHU 0.036589871
-93     BLU 0.041781188
-94     WS5 0.050781189
-95     IN2 0.045897606
-96     PHU 0.045301590
-97     WIL 0.059219935
-98     CLP 0.043510157
-99     BL3 0.040617429
-100    SLU 0.039403852
-101    KCN 0.048247450
-102    CN2 0.020605821
-103    MLU 0.123770652
-104    DTN 0.016641702
-105    BFP 0.053779175
-106    CL6 0.028375298
-107    CHP 0.052715854
-108    NH1 0.049538145
-109    CNU 0.052072527
-110    SPU 0.091806863
-111    KEO 0.113948321
-112    WS7 0.046073992
-113    RC2 0.045230063
-114    BL1 0.028605638
-115    SL2 0.057674408
-116    SL3 0.039900262
-117    SR2 0.039166165
-118    CL5 0.043967864
-119    NY4 0.025141348
-120    NY3 0.040148480
-121    PTP 0.053671175
-122    BR3 0.023677684
-123    ML2 0.054643231
-124    WOR 0.035702824
-125    PHN 0.041733225
-126    ALT 0.049685203
-127    WS4 0.056657078
-128    CH2 0.034461343
-129    SL1 0.062359657
-130    BSU 0.057694117
-131    BR4 0.046689487
-132    CH1 0.059970522
-133    BFN 0.021620766
-134    BSP 0.047155619
-135    BS2 0.046713985
-136    NYP 0.048617293
-137    PHP 0.058366628
-138    IN1 0.065331766
-139    RIC 0.066936237
-140    BL4 0.057983907</code></pre>
+<pre><code>[1] 0.03229923</code></pre>
 </div>
 </div>
 <p>Since I use the computer with Windows, I can’t use forking, so I use socket instead. First build calculation for one single iter, then build the cluster with all variable, exporting time to each iter, eventually use parLapply to conduct bootstrap parallelly to get the results.</p>
 <p>3, Using futures with the future package.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># upload all packages needed</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(future)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># upload all packages needed</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(future)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: package &#39;future&#39; was built under R version 4.2.3</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(future.apply)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(future.apply)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: package &#39;future.apply&#39; was built under R version 4.2.3</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set the times for bootstrap</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co">#prepare multisession and worker</span></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">4</span>, <span class="at">future.seed =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set the times for bootstrap</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co">#prepare multisession and worker</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">4</span>, <span class="at">future.seed =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: Detected 1 unknown future arguments: &#39;future.seed&#39;</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># use future_lapply to conduct bootstrap</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param team variables being conducted with bootstrap</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">future_lapply</span>(<span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">numeric</span>(times) </span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
-<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    total[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">sample</span>(team_data, <span class="fu">length</span>(team_data), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sd</span>(total))</span>
-<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># use future_lapply to conduct bootstrap</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param team variables being conducted with bootstrap</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">future_lapply</span>(<span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">numeric</span>(times) </span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    total[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">sample</span>(team_data, <span class="fu">length</span>(team_data), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sd</span>(total))</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: UNRELIABLE VALUE: One of the &#39;future.apply&#39; iterations
 (&#39;future_lapply-1&#39;) unexpectedly generated random numbers without declaring so.
@@ -3489,195 +3359,58 @@ ensures that proper, parallel-safe random numbers are produced via the
 L&#39;Ecuyer-CMRG method. To disable this check, use &#39;future.seed = NULL&#39;, or set
 option &#39;future.rng.onMisuse&#39; to &quot;ignore&quot;.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># turn the result into data.frame</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>result_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="at">sd_bootstrap =</span> <span class="fu">unlist</span>(totalboots))</span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(result_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># turn the result into data.frame</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>result_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="at">sd_bootstrap =</span> <span class="fu">unlist</span>(totalboots))</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="co">#get result</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>mean3<span class="ot">&lt;-</span><span class="fu">mean</span>(result_df[,<span class="dv">2</span>])</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>mean3</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>    teamID sd_bootstrap
-1      SFN  0.005537387
-2      CHN  0.004854603
-3      CHA  0.005554114
-4      BOS  0.005401011
-5      SEA  0.006591000
-6      NYA  0.005466182
-7      NYN  0.005416918
-8      ATL  0.005937741
-9      ML1  0.014612679
-10     ML4  0.008929733
-11     CAL  0.008385870
-12     BAL  0.005750895
-13     LAN  0.005647368
-14     OAK  0.006957334
-15     HOU  0.006055771
-16     WAS  0.008080401
-17     MIN  0.005916050
-18     PH3  0.086521995
-19     BR2  0.025664180
-20     PHI  0.004662186
-21     BSN  0.009391404
-22     PIT  0.004637297
-23     BRO  0.010123076
-24     TL2  0.063191632
-25     CLE  0.005308583
-26     DET  0.005352197
-27     FLO  0.010189309
-28     MIL  0.008559170
-29     COL  0.007804507
-30     SLN  0.004980887
-31     KCA  0.006065544
-32     TBA  0.008198634
-33     KC1  0.012195946
-34     TRO  0.039955594
-35     WS1  0.012340427
-36     CIN  0.004994050
-37     SLA  0.017508668
-38     SDN  0.005912003
-39     TEX  0.006165189
-40     LAA  0.009449258
-41     ARI  0.008895110
-42     TOR  0.006217414
-43     SR1  0.040718151
-44     SL4  0.016170053
-45     RC1  0.081878902
-46     PH2  0.033956620
-47     BS1  0.031311934
-48     HR1  0.037882981
-49     CN1  0.023824238
-50     MIA  0.012134452
-51     TRN  0.030011744
-52     BL2  0.015809860
-53     SE1  0.042267701
-54     PT1  0.022383067
-55     WSU  0.034551595
-56     CL3  0.028503289
-57     ML3  0.059448376
-58     MON  0.008275296
-59     KCU  0.031599320
-60     ANA  0.015608991
-61     WS2  0.012641223
-62     MID  0.060822150
-63     CL2  0.022216844
-64     NY1  0.008836023
-65     KC2  0.026067282
-66     CL4  0.016506031
-67     BR1  0.042850967
-68     CL1  0.037181935
-69     ELI  0.062984368
-70     WS6  0.055867151
-71     LS1  0.056265964
-72     WS3  0.046430623
-73     NY2  0.022794273
-74     HAR  0.044123742
-75     PRO  0.022383735
-76     LS3  0.016231888
-77     SL5  0.029054770
-78     WS9  0.037878566
-79     BLN  0.018826158
-80     MLA  0.038294197
-81     IN3  0.030511674
-82     BRP  0.055615136
-83     CN3  0.053333728
-84     LS2  0.016292261
-85     PH1  0.027685066
-86     PHA  0.016880150
-87     FW1  0.053909247
-88     BLA  0.031637083
-89     PH4  0.015353154
-90     TL1  0.049809964
-91     WS8  0.021772084
-92     CHU  0.036332077
-93     BLU  0.041918776
-94     WS5  0.051810853
-95     IN2  0.047660597
-96     PHU  0.045648003
-97     WIL  0.060980960
-98     CLP  0.044965647
-99     BL3  0.040457631
-100    SLU  0.040134654
-101    KCN  0.050128978
-102    CN2  0.019228173
-103    MLU  0.126536987
-104    DTN  0.016911941
-105    BFP  0.051604909
-106    CL6  0.028766477
-107    CHP  0.052278228
-108    NH1  0.049011085
-109    CNU  0.052646187
-110    SPU  0.088054840
-111    KEO  0.108069529
-112    WS7  0.049350091
-113    RC2  0.045219007
-114    BL1  0.028798389
-115    SL2  0.059382351
-116    SL3  0.039681974
-117    SR2  0.041216794
-118    CL5  0.044616934
-119    NY4  0.024686032
-120    NY3  0.040517232
-121    PTP  0.052849940
-122    BR3  0.022688944
-123    ML2  0.054736544
-124    WOR  0.035112720
-125    PHN  0.040882463
-126    ALT  0.048864970
-127    WS4  0.057438260
-128    CH2  0.036339448
-129    SL1  0.063005550
-130    BSU  0.055903951
-131    BR4  0.047934809
-132    CH1  0.059835404
-133    BFN  0.020210782
-134    BSP  0.048864184
-135    BS2  0.047836198
-136    NYP  0.048387043
-137    PHP  0.058089178
-138    IN1  0.065551622
-139    RIC  0.067752373
-140    BL4  0.056718525</code></pre>
+<pre><code>[1] 0.03232143</code></pre>
 </div>
 </div>
 <p>Here use future, first due to the windows system I use multisession to get multiple workrs, then conduct bootstrap using future_lapply</p>
 <p>b, Generate a table showing the estimated RF and associated standard errors from the three approaches</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get mean RF using naive</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>totalboots1<span class="ot">&lt;-</span><span class="fu">data.frame</span>(<span class="fu">tapply</span>(average<span class="sc">$</span>RF,average<span class="sc">$</span>teamID,<span class="cf">function</span>(x){</span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  total<span class="ot">&lt;-</span><span class="fu">c</span>()</span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times){</span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    total<span class="ot">&lt;-</span><span class="fu">c</span>(total,<span class="fu">mean</span>(<span class="fu">sample</span>(x,<span class="fu">length</span>(x),<span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
-<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  totalsd<span class="ot">&lt;-</span><span class="fu">mean</span>(total)</span>
-<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(totalsd)</span>
-<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>}))</span>
-<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(totalboots1)<span class="ot">&lt;-</span><span class="st">&quot;mean naive&quot;</span></span>
-<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="co">#get se RF using naive</span></span>
-<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>averagerf<span class="ot">&lt;-</span><span class="fu">data.frame</span>(averagerf)</span>
-<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>averageRF<span class="ot">&lt;-</span><span class="fu">cbind</span>(totalboots0,averagerf)</span>
-<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>totalboots2<span class="ot">&lt;-</span>averageRF<span class="sc">$</span>totalboots<span class="sc">/</span><span class="fu">sqrt</span>(averageRF<span class="sc">$</span>count)</span>
-<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a><span class="co">#get mean RF using parallel</span></span>
-<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
-<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>bootstrap_function <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
-<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
-<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a>    total <span class="ot">&lt;-</span> <span class="fu">c</span>(total, <span class="fu">mean</span>(<span class="fu">sample</span>(x, <span class="fu">length</span>(x), <span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
-<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb26-29"><a href="#cb26-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(total)</span>
-<span id="cb26-30"><a href="#cb26-30" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb26-31"><a href="#cb26-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-32"><a href="#cb26-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cluster with the number of available cores</span></span>
-<span id="cb26-33"><a href="#cb26-33" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)  </span>
-<span id="cb26-34"><a href="#cb26-34" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-35"><a href="#cb26-35" aria-hidden="true" tabindex="-1"></a><span class="co"># Export necessary variables and functions to each worker</span></span>
-<span id="cb26-36"><a href="#cb26-36" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">&quot;average&quot;</span>, <span class="st">&quot;times&quot;</span>, <span class="st">&quot;bootstrap_function&quot;</span>))</span>
-<span id="cb26-37"><a href="#cb26-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-38"><a href="#cb26-38" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure that dplyr is available on each worker</span></span>
-<span id="cb26-39"><a href="#cb26-39" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterEvalQ</span>(cl, {<span class="fu">library</span>(dplyr)})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get mean RF using naive</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>totalboots1<span class="ot">&lt;-</span><span class="fu">data.frame</span>(<span class="fu">tapply</span>(average<span class="sc">$</span>RF,average<span class="sc">$</span>teamID,<span class="cf">function</span>(x){</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  total<span class="ot">&lt;-</span><span class="fu">c</span>()</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times){</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>    total<span class="ot">&lt;-</span><span class="fu">c</span>(total,<span class="fu">mean</span>(<span class="fu">sample</span>(x,<span class="fu">length</span>(x),<span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  totalsd<span class="ot">&lt;-</span><span class="fu">mean</span>(total)</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(totalsd)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(totalboots1)<span class="ot">&lt;-</span><span class="st">&quot;mean naive&quot;</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="co">#get se RF using naive</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>averagerf<span class="ot">&lt;-</span><span class="fu">data.frame</span>(averagerf)</span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>averageRF<span class="ot">&lt;-</span><span class="fu">cbind</span>(totalboots0,averagerf)</span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>totalboots2<span class="ot">&lt;-</span>averageRF<span class="sc">$</span>totalboots<span class="sc">/</span><span class="fu">sqrt</span>(averageRF<span class="sc">$</span>count)</span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a><span class="co">#get mean RF using parallel</span></span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a>bootstrap_function <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a>    total <span class="ot">&lt;-</span> <span class="fu">c</span>(total, <span class="fu">mean</span>(<span class="fu">sample</span>(x, <span class="fu">length</span>(x), <span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(total)</span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-32"><a href="#cb27-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cluster with the number of available cores</span></span>
+<span id="cb27-33"><a href="#cb27-33" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)  </span>
+<span id="cb27-34"><a href="#cb27-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-35"><a href="#cb27-35" aria-hidden="true" tabindex="-1"></a><span class="co"># Export necessary variables and functions to each worker</span></span>
+<span id="cb27-36"><a href="#cb27-36" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">&quot;average&quot;</span>, <span class="st">&quot;times&quot;</span>, <span class="st">&quot;bootstrap_function&quot;</span>))</span>
+<span id="cb27-37"><a href="#cb27-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-38"><a href="#cb27-38" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure that dplyr is available on each worker</span></span>
+<span id="cb27-39"><a href="#cb27-39" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterEvalQ</span>(cl, {<span class="fu">library</span>(dplyr)})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[[1]]
 [1] &quot;dplyr&quot;     &quot;stats&quot;     &quot;graphics&quot;  &quot;grDevices&quot; &quot;utils&quot;     &quot;datasets&quot; 
@@ -3739,43 +3472,43 @@ option &#39;future.rng.onMisuse&#39; to &quot;ignore&quot;.</code></pre>
 [1] &quot;dplyr&quot;     &quot;stats&quot;     &quot;graphics&quot;  &quot;grDevices&quot; &quot;utils&quot;     &quot;datasets&quot; 
 [7] &quot;methods&quot;   &quot;base&quot;     </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform parallel bootstrap sampling for each team using parLapply</span></span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>totalboots3<span class="ot">&lt;-</span> <span class="fu">parLapply</span>(cl, <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
-<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bootstrap_function</span>(team_data)</span>
-<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop the cluster after computation</span></span>
-<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
-<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the team IDs with their corresponding standard deviations into a data frame</span></span>
-<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>totalboots_df1<span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sd_RF =</span> <span class="fu">unlist</span>(totalboots3))</span>
-<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a><span class="co"># get se RF using parallel</span></span>
-<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>averageRF<span class="ot">&lt;-</span><span class="fu">cbind</span>(totalboots_df,averagerf)</span>
-<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>totalboots4<span class="ot">&lt;-</span>averageRF<span class="sc">$</span>sd_RF<span class="sc">/</span><span class="fu">sqrt</span>(averageRF<span class="sc">$</span>count)</span>
-<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a><span class="co">#get mean RF using future</span></span>
-<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a><span class="co">#prepare multisession and worker</span></span>
-<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">4</span>, <span class="at">future.seed =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform parallel bootstrap sampling for each team using parLapply</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>totalboots3<span class="ot">&lt;-</span> <span class="fu">parLapply</span>(cl, <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bootstrap_function</span>(team_data)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop the cluster after computation</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the team IDs with their corresponding standard deviations into a data frame</span></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>totalboots_df1<span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sd_RF =</span> <span class="fu">unlist</span>(totalboots3))</span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a><span class="co"># get se RF using parallel</span></span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>averageRF<span class="ot">&lt;-</span><span class="fu">cbind</span>(totalboots_df,averagerf)</span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>totalboots4<span class="ot">&lt;-</span>averageRF<span class="sc">$</span>sd_RF<span class="sc">/</span><span class="fu">sqrt</span>(averageRF<span class="sc">$</span>count)</span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-19"><a href="#cb29-19" aria-hidden="true" tabindex="-1"></a><span class="co">#get mean RF using future</span></span>
+<span id="cb29-20"><a href="#cb29-20" aria-hidden="true" tabindex="-1"></a><span class="co">#prepare multisession and worker</span></span>
+<span id="cb29-21"><a href="#cb29-21" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">4</span>, <span class="at">future.seed =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: Detected 1 unknown future arguments: &#39;future.seed&#39;</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># use future_lapply to conduct bootstrap</span></span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param team variables being conducted with bootstrap</span></span>
-<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>totalboots5<span class="ot">&lt;-</span> <span class="fu">future_lapply</span>(<span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
-<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
-<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">numeric</span>(times) </span>
-<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
-<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    total[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">sample</span>(team_data, <span class="fu">length</span>(team_data), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">mean</span>(total))</span>
-<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># use future_lapply to conduct bootstrap</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param team variables being conducted with bootstrap</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>totalboots5<span class="ot">&lt;-</span> <span class="fu">future_lapply</span>(<span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">numeric</span>(times) </span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>    total[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">sample</span>(team_data, <span class="fu">length</span>(team_data), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">mean</span>(total))</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: UNRELIABLE VALUE: One of the &#39;future.apply&#39; iterations
 (&#39;future_lapply-1&#39;) unexpectedly generated random numbers without declaring so.
@@ -3812,137 +3545,144 @@ ensures that proper, parallel-safe random numbers are produced via the
 L&#39;Ecuyer-CMRG method. To disable this check, use &#39;future.seed = NULL&#39;, or set
 option &#39;future.rng.onMisuse&#39; to &quot;ignore&quot;.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># turn the result into data.frame</span></span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>result_df1<span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sd_bootstrap =</span> <span class="fu">unlist</span>(totalboots5))</span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="co"># get se RF using future</span></span>
-<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>averageRF<span class="ot">&lt;-</span><span class="fu">cbind</span>(result_df,averagerf)</span>
-<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>totalboots6<span class="ot">&lt;-</span>averageRF<span class="sc">$</span>sd_bootstrap<span class="sc">/</span><span class="fu">sqrt</span>(averageRF<span class="sc">$</span>count)</span>
-<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a><span class="co">#create the big table</span></span>
-<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>bigtable<span class="ot">&lt;-</span><span class="fu">cbind</span>(totalboots1,totalboots2,totalboots_df1,totalboots4,result_df1,totalboots6)</span>
-<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(bigtable)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">&quot;mean naive&quot;</span>,<span class="st">&quot;se naive&quot;</span>,<span class="st">&quot;mean parallel&quot;</span>,<span class="st">&quot;se parallel&quot;</span>,<span class="st">&quot;mean future&quot;</span>,<span class="st">&quot;se future&quot;</span>)</span>
-<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a><span class="co"># get the first 10 teams with highest RF, although the values are not the same, there doesn&#39;t exist many differences, so I judge the value of RF in each team with that of naive</span></span>
-<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a>bigtable<span class="ot">&lt;-</span>bigtable<span class="sc">%&gt;%</span></span>
-<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(bigtable<span class="sc">$</span><span class="st">`</span><span class="at">mean naive</span><span class="st">`</span>))</span>
-<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a>bigtable<span class="ot">&lt;-</span><span class="fu">data.frame</span>(bigtable)</span>
-<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>bigtable[<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>,]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co"># turn the result into data.frame</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>result_df1<span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sd_bootstrap =</span> <span class="fu">unlist</span>(totalboots5))</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a><span class="co"># get se RF using future</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>averageRF<span class="ot">&lt;-</span><span class="fu">cbind</span>(result_df,averagerf)</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>totalboots6<span class="ot">&lt;-</span>averageRF<span class="sc">$</span>sd_bootstrap<span class="sc">/</span><span class="fu">sqrt</span>(averageRF<span class="sc">$</span>count)</span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a><span class="co">#create the big table</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a>bigtable<span class="ot">&lt;-</span><span class="fu">cbind</span>(totalboots1,totalboots2,totalboots_df1,totalboots4,result_df1,totalboots6)</span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(bigtable)<span class="ot">&lt;-</span><span class="fu">c</span>(<span class="st">&quot;mean naive&quot;</span>,<span class="st">&quot;se naive&quot;</span>,<span class="st">&quot;mean parallel&quot;</span>,<span class="st">&quot;se parallel&quot;</span>,<span class="st">&quot;mean future&quot;</span>,<span class="st">&quot;se future&quot;</span>)</span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a><span class="co"># get the first 10 teams with highest RF, although the values are not the same, there doesn&#39;t exist many differences, so I judge the value of RF in each team with that of naive</span></span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>bigtable<span class="ot">&lt;-</span>bigtable<span class="sc">%&gt;%</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(bigtable<span class="sc">$</span><span class="st">`</span><span class="at">mean naive</span><span class="st">`</span>))</span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>bigtable<span class="ot">&lt;-</span><span class="fu">data.frame</span>(bigtable)</span>
+<span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>bigtable[<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>,]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>    mean.naive     se.naive mean.parallel  se.parallel mean.future    se.future
-RC1  0.5775819 0.0153475687     0.5134877 0.0233904547   0.5046562 0.0239132427
-LS1  0.5319103 0.0073270631     0.4376486 0.0058492596   0.4364402 0.0057262014
-ELI  0.5255371 0.0106868124     0.3639146 0.0020280715   0.3636865 0.0020510968
-KEO  0.5124111 0.0320379500     0.4395013 0.0024958382   0.4403625 0.0024506718
-MLU  0.5070153 0.0306450782     0.4494042 0.0045359292   0.4480100 0.0045660139
-RIC  0.5051731 0.0125594365     0.4639141 0.0099865421   0.4641385 0.0095827910
-BLA  0.4933602 0.0031053623     0.3925297 0.0005453349   0.3923709 0.0005508358
-LS3  0.4887036 0.0007944844     0.5258642 0.0030320688   0.5278339 0.0030551906
-TRN  0.4809393 0.0026803789     0.3839767 0.0044439797   0.3877740 0.0043706158
-PHU  0.4796986 0.0061785752     0.4044835 0.0056645399   0.4075836 0.0058540286</code></pre>
+RC1  0.5736942 0.0151383666     0.5059873 0.0242577134   0.5093290 0.0239481039
+LS1  0.5340857 0.0076444833     0.4375215 0.0057136038   0.4392815 0.0060275375
+ELI  0.5285783 0.0106228239     0.3636645 0.0020355655   0.3638613 0.0020096135
+KEO  0.5149836 0.0299016497     0.4402898 0.0025185338   0.4403271 0.0024869250
+MLU  0.5100219 0.0306259027     0.4490127 0.0045763311   0.4493539 0.0046484124
+RIC  0.5082358 0.0125115016     0.4603390 0.0100286865   0.4646294 0.0098237869
+BLA  0.4937992 0.0030688761     0.3928985 0.0005333549   0.3922906 0.0005392682
+LS3  0.4890643 0.0007637209     0.5255215 0.0030097935   0.5252841 0.0031252626
+PHU  0.4823367 0.0061729446     0.4033360 0.0056800882   0.4033356 0.0059927230
+TRN  0.4819938 0.0025641103     0.3883537 0.0045316252   0.3843236 0.0045949162</code></pre>
 </div>
 </div>
 <p>The table is generated as above</p>
 <p>c, Report and discuss the performance difference between the versions.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time taken for the operation of naive bootstrap</span></span>
-<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
-<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a><span class="co">#get the number of times</span></span>
-<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a><span class="co">#since stratified bootstrap is to get conduct bootstrap inside stratas, the averageRF for each team can&#39;t be used, here use individual RFs instead</span></span>
-<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>average<span class="ot">&lt;-</span>average<span class="sc">%&gt;%</span></span>
-<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(InnOuts) <span class="sc">&amp;</span> InnOuts <span class="sc">&gt;</span> <span class="dv">0</span>)<span class="sc">%&gt;%</span></span>
-<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">count=</span><span class="dv">1</span>)<span class="sc">%&gt;%</span></span>
-<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">RF=</span><span class="dv">3</span><span class="sc">*</span>(PO<span class="sc">+</span>A)<span class="sc">/</span>InnOuts)</span>
-<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>average<span class="ot">&lt;-</span><span class="fu">data.frame</span>(average)</span>
-<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a><span class="co">#use tapply to conduct bootstrap</span></span>
-<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
-<span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb37-18"><a href="#cb37-18" aria-hidden="true" tabindex="-1"></a>totalboots<span class="ot">&lt;-</span><span class="fu">tapply</span>(average<span class="sc">$</span>RF,average<span class="sc">$</span>teamID,<span class="cf">function</span>(x){</span>
-<span id="cb37-19"><a href="#cb37-19" aria-hidden="true" tabindex="-1"></a>  total<span class="ot">&lt;-</span><span class="fu">c</span>()</span>
-<span id="cb37-20"><a href="#cb37-20" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times){</span>
-<span id="cb37-21"><a href="#cb37-21" aria-hidden="true" tabindex="-1"></a>    total<span class="ot">&lt;-</span><span class="fu">c</span>(total,<span class="fu">mean</span>(<span class="fu">sample</span>(x,<span class="fu">length</span>(x),<span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
-<span id="cb37-22"><a href="#cb37-22" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb37-23"><a href="#cb37-23" aria-hidden="true" tabindex="-1"></a>  totalsd<span class="ot">&lt;-</span><span class="fu">sd</span>(total)</span>
-<span id="cb37-24"><a href="#cb37-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(totalsd)</span>
-<span id="cb37-25"><a href="#cb37-25" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb37-26"><a href="#cb37-26" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time taken for the operation of naive bootstrap</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="co">#get the number of times</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a><span class="co">#since stratified bootstrap is to get conduct bootstrap inside stratas, the averageRF for each team can&#39;t be used, here use individual RFs instead</span></span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>average<span class="ot">&lt;-</span>average<span class="sc">%&gt;%</span></span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(InnOuts) <span class="sc">&amp;</span> InnOuts <span class="sc">&gt;</span> <span class="dv">0</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">count=</span><span class="dv">1</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">RF=</span><span class="dv">3</span><span class="sc">*</span>(PO<span class="sc">+</span>A)<span class="sc">/</span>InnOuts)</span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a>average<span class="ot">&lt;-</span><span class="fu">data.frame</span>(average)</span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a><span class="co">#use tapply to conduct bootstrap</span></span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
+<span id="cb38-17"><a href="#cb38-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb38-18"><a href="#cb38-18" aria-hidden="true" tabindex="-1"></a>totalboots<span class="ot">&lt;-</span><span class="fu">tapply</span>(average<span class="sc">$</span>RF,average<span class="sc">$</span>teamID,<span class="cf">function</span>(x){</span>
+<span id="cb38-19"><a href="#cb38-19" aria-hidden="true" tabindex="-1"></a>  total<span class="ot">&lt;-</span><span class="fu">c</span>()</span>
+<span id="cb38-20"><a href="#cb38-20" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times){</span>
+<span id="cb38-21"><a href="#cb38-21" aria-hidden="true" tabindex="-1"></a>    total<span class="ot">&lt;-</span><span class="fu">c</span>(total,<span class="fu">mean</span>(<span class="fu">sample</span>(x,<span class="fu">length</span>(x),<span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
+<span id="cb38-22"><a href="#cb38-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb38-23"><a href="#cb38-23" aria-hidden="true" tabindex="-1"></a>  totalsd<span class="ot">&lt;-</span><span class="fu">sd</span>(total)</span>
+<span id="cb38-24"><a href="#cb38-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">#get the final result</span></span>
+<span id="cb38-25"><a href="#cb38-25" aria-hidden="true" tabindex="-1"></a>mean1<span class="ot">&lt;-</span><span class="fu">mean</span>(totalboots0[,<span class="dv">1</span>])</span>
+<span id="cb38-26"><a href="#cb38-26" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb38-27"><a href="#cb38-27" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   9.88    0.30   11.11 </code></pre>
+  10.19    0.19   11.17 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time taken for the operation of parallel bootstrap</span></span>
-<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
-<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Set number of bootstrap samples</span></span>
-<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
-<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>bootstrap_function <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
-<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
-<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>    total <span class="ot">&lt;-</span> <span class="fu">c</span>(total, <span class="fu">mean</span>(<span class="fu">sample</span>(x, <span class="fu">length</span>(x), <span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
-<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sd</span>(total)</span>
-<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cluster with the number of available cores</span></span>
-<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)  </span>
-<span id="cb39-20"><a href="#cb39-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-21"><a href="#cb39-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Export necessary variables and functions to each worker</span></span>
-<span id="cb39-22"><a href="#cb39-22" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">&quot;average&quot;</span>, <span class="st">&quot;times&quot;</span>, <span class="st">&quot;bootstrap_function&quot;</span>))</span>
-<span id="cb39-23"><a href="#cb39-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-24"><a href="#cb39-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure that dplyr is available on each worker</span></span>
-<span id="cb39-25"><a href="#cb39-25" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterEvalQ</span>(cl, {<span class="fu">library</span>(dplyr)})</span>
-<span id="cb39-26"><a href="#cb39-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-27"><a href="#cb39-27" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform parallel bootstrap sampling for each team using parLapply</span></span>
-<span id="cb39-28"><a href="#cb39-28" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">parLapply</span>(cl, <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
-<span id="cb39-29"><a href="#cb39-29" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
-<span id="cb39-30"><a href="#cb39-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bootstrap_function</span>(team_data)</span>
-<span id="cb39-31"><a href="#cb39-31" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb39-32"><a href="#cb39-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-33"><a href="#cb39-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop the cluster after computation</span></span>
-<span id="cb39-34"><a href="#cb39-34" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
-<span id="cb39-35"><a href="#cb39-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-36"><a href="#cb39-36" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the team IDs with their corresponding standard deviations into a data frame</span></span>
-<span id="cb39-37"><a href="#cb39-37" aria-hidden="true" tabindex="-1"></a>totalboots_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID),<span class="at">sd_RF =</span> <span class="fu">unlist</span>(totalboots))</span>
-<span id="cb39-38"><a href="#cb39-38" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time taken for the operation of parallel bootstrap</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Set number of bootstrap samples</span></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param x variables being conducted with bootstrap</span></span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>bootstrap_function <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>    total <span class="ot">&lt;-</span> <span class="fu">c</span>(total, <span class="fu">mean</span>(<span class="fu">sample</span>(x, <span class="fu">length</span>(x), <span class="at">replace =</span> <span class="cn">TRUE</span>)))</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sd</span>(total)</span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb40-17"><a href="#cb40-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cluster with the number of available cores</span></span>
+<span id="cb40-19"><a href="#cb40-19" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)  </span>
+<span id="cb40-20"><a href="#cb40-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-21"><a href="#cb40-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Export necessary variables and functions to each worker</span></span>
+<span id="cb40-22"><a href="#cb40-22" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">&quot;average&quot;</span>, <span class="st">&quot;times&quot;</span>, <span class="st">&quot;bootstrap_function&quot;</span>))</span>
+<span id="cb40-23"><a href="#cb40-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-24"><a href="#cb40-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure that dplyr is available on each worker</span></span>
+<span id="cb40-25"><a href="#cb40-25" aria-hidden="true" tabindex="-1"></a><span class="fu">clusterEvalQ</span>(cl, {<span class="fu">library</span>(dplyr)})</span>
+<span id="cb40-26"><a href="#cb40-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-27"><a href="#cb40-27" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform parallel bootstrap sampling for each team using parLapply</span></span>
+<span id="cb40-28"><a href="#cb40-28" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">parLapply</span>(cl, <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
+<span id="cb40-29"><a href="#cb40-29" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
+<span id="cb40-30"><a href="#cb40-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bootstrap_function</span>(team_data)</span>
+<span id="cb40-31"><a href="#cb40-31" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb40-32"><a href="#cb40-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-33"><a href="#cb40-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Stop the cluster after computation</span></span>
+<span id="cb40-34"><a href="#cb40-34" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
+<span id="cb40-35"><a href="#cb40-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-36"><a href="#cb40-36" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine the team IDs with their corresponding standard deviations into a data frame</span></span>
+<span id="cb40-37"><a href="#cb40-37" aria-hidden="true" tabindex="-1"></a>totalboots_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID),<span class="at">sd_RF =</span> <span class="fu">unlist</span>(totalboots))</span>
+<span id="cb40-38"><a href="#cb40-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-39"><a href="#cb40-39" aria-hidden="true" tabindex="-1"></a><span class="co">#get result</span></span>
+<span id="cb40-40"><a href="#cb40-40" aria-hidden="true" tabindex="-1"></a>mean2<span class="ot">&lt;-</span><span class="fu">mean</span>(totalboots_df[,<span class="dv">2</span>])</span>
+<span id="cb40-41"><a href="#cb40-41" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.14    0.34    9.75 </code></pre>
+   0.17    0.31    9.17 </code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time taken for the operation of future bootstrap</span></span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a> <span class="co"># set the times for bootstrap</span></span>
-<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="co">#prepare multisession and worker</span></span>
-<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">4</span>, <span class="at">future.seed =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a><span class="co"># use future_lapply to conduct bootstrap</span></span>
-<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
-<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
-<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param team variables being conducted with bootstrap</span></span>
-<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
-<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">future_lapply</span>(<span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
-<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
-<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">numeric</span>(times) </span>
-<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
-<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>    total[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">sample</span>(team_data, <span class="fu">length</span>(team_data), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sd</span>(total))</span>
-<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a><span class="co"># turn the result into data.frame</span></span>
-<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>result_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="at">sd_bootstrap =</span> <span class="fu">unlist</span>(totalboots))</span>
-<span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co"># time taken for the operation of future bootstrap</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a> <span class="co"># set the times for bootstrap</span></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>times <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a><span class="co">#prepare multisession and worker</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">4</span>, <span class="at">future.seed =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a><span class="co"># use future_lapply to conduct bootstrap</span></span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; Function to create bootstrap</span></span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; </span></span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param team variables being conducted with bootstrap</span></span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @return the result of bootstrap</span></span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a>totalboots <span class="ot">&lt;-</span> <span class="fu">future_lapply</span>(<span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="cf">function</span>(team) {</span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a>  team_data <span class="ot">&lt;-</span> average <span class="sc">%&gt;%</span> <span class="fu">filter</span>(teamID <span class="sc">==</span> team) <span class="sc">%&gt;%</span> <span class="fu">pull</span>(RF)</span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a>  total <span class="ot">&lt;-</span> <span class="fu">numeric</span>(times) </span>
+<span id="cb42-17"><a href="#cb42-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>times) {</span>
+<span id="cb42-18"><a href="#cb42-18" aria-hidden="true" tabindex="-1"></a>    total[i] <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">sample</span>(team_data, <span class="fu">length</span>(team_data), <span class="at">replace =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb42-19"><a href="#cb42-19" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb42-20"><a href="#cb42-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">sd</span>(total))</span>
+<span id="cb42-21"><a href="#cb42-21" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb42-22"><a href="#cb42-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-23"><a href="#cb42-23" aria-hidden="true" tabindex="-1"></a><span class="co"># turn the result into data.frame</span></span>
+<span id="cb42-24"><a href="#cb42-24" aria-hidden="true" tabindex="-1"></a>result_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">teamID =</span> <span class="fu">unique</span>(average<span class="sc">$</span>teamID), <span class="at">sd_bootstrap =</span> <span class="fu">unlist</span>(totalboots))</span>
+<span id="cb42-25"><a href="#cb42-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-26"><a href="#cb42-26" aria-hidden="true" tabindex="-1"></a><span class="co">#get result</span></span>
+<span id="cb42-27"><a href="#cb42-27" aria-hidden="true" tabindex="-1"></a>mean3<span class="ot">&lt;-</span><span class="fu">mean</span>(result_df[,<span class="dv">2</span>])</span>
+<span id="cb42-28"><a href="#cb42-28" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: Detected 1 unknown future arguments: &#39;future.seed&#39;</code></pre>
 </div>
@@ -3984,7 +3724,7 @@ option &#39;future.rng.onMisuse&#39; to &quot;ignore&quot;.</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed 
-   0.30    0.07   10.78 </code></pre>
+   0.17    0.14   11.19 </code></pre>
 </div>
 </div>
 <p>From the system.time it can be seen that the user time of naive bootstrap is the longest, then comes future bootstrap, parallel bootstrap takes the least user time. There do exist weird phenomenon that the system and elapsed time for naive is the shortest and that of parallel and future is longer, I think that’s due to the shortage of my storage space in my computer, which means the parallel computation can’t be conducted effectively. Normally the system time should rank just like the user time while future bootstrap takes the shortest elapsed time, then comes parallel bootstrap, then naive.</p>
