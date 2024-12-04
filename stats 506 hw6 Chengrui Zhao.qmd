@@ -1,0 +1,352 @@
+---
+title: "stats 506 hw6"
+author: "Chengrui Zhao"
+format: 
+  html: 
+    embed-resources: true
+editor: visual
+---
+
+Github link is at the bottom
+
+## Stratified Bootstrapping
+
+Calculate the average RF for each team in the Fielding table. Then, since we don’t have a closed form for the standard deviation of this statistic, carry out a stratified bootstrap by team to estimate it. Do this out three ways:
+
+1, Without any parallel processing
+
+```{r}
+# upload all packages needed
+library(DBI)
+library(RSQLite)
+library(dplyr)
+
+# load in related database
+lahman <- dbConnect(SQLite(), "C:\\Users\\DELL\\Downloads\\lahman_1871-2022.sqlite")
+
+# select related columns from the database
+average<-dbGetQuery(lahman, "SELECT teamID,InnOuts,PO,A
+FROM Fielding
+                      ")
+
+# convert the data into tibble for future use
+average<-tibble(average)
+
+#get the average RF
+averagerf<-average%>%
+  filter(!is.na(InnOuts) & InnOuts > 0)%>%
+  mutate(count=1)%>%
+  mutate(RF=3*(PO+A)/InnOuts)%>%
+  group_by(teamID)%>%
+  summarize(count=sum(count),RF=sum(RF,na.rm=TRUE))%>%
+  mutate(averageRF=RF/count)
+
+#get the number of times
+times <- 1000
+
+#since stratified bootstrap is to get conduct bootstrap inside stratas, the averageRF for each team can't be used, here use individual RFs instead
+average<-average%>%
+  filter(!is.na(InnOuts) & InnOuts > 0)%>%
+  mutate(count=1)%>%
+  mutate(RF=3*(PO+A)/InnOuts)
+average<-data.frame(average)
+
+#use tapply to conduct bootstrap
+#' Function to create bootstrap
+#' 
+#' @param x variables being conducted with bootstrap
+#' @return the result of bootstrap
+totalboots0<-tapply(average$RF,average$teamID,function(x){
+  total<-c()
+  for(i in 1:times){
+    total<-c(total,mean(sample(x,length(x),replace = TRUE)))
+  }
+  totalsd<-sd(total)
+  return(totalsd)
+})
+totalboots0<-data.frame(totalboots0)
+```
+
+So here since it's the first method, we need to get the mean RF for each team first, then calculate individual RFs inside each groups so that we can use them for bootstrap, apply bootstrap to each team using tapply to get the sd of RF for each team
+
+2, Using parallel processing with the parallel package.
+
+```{r}
+# upload all packages needed
+library(parallel)
+
+# Set number of bootstrap samples
+times <- 1000
+
+#' Function to create bootstrap
+#' 
+#' @param x variables being conducted with bootstrap
+#' @return the result of bootstrap
+bootstrap_function <- function(x) {
+  total <- c()
+  for (i in 1:times) {
+    total <- c(total, mean(sample(x, length(x), replace = TRUE)))
+  }
+  sd(total)
+}
+
+# Create a cluster with the number of available cores
+cl <- makeCluster(detectCores() - 1)  
+
+# Export necessary variables and functions to each worker
+clusterExport(cl, varlist = c("average", "times", "bootstrap_function"))
+
+# Ensure that dplyr is available on each worker
+clusterEvalQ(cl, {library(dplyr)})
+
+# Perform parallel bootstrap sampling for each team using parLapply
+totalboots <- parLapply(cl, unique(average$teamID), function(team) {
+  team_data <- average %>% filter(teamID == team) %>% pull(RF)
+  bootstrap_function(team_data)
+})
+
+# Stop the cluster after computation
+stopCluster(cl)
+
+# Combine the team IDs with their corresponding standard deviations into a data frame
+totalboots_df <- data.frame(teamID = unique(average$teamID),sd_RF = unlist(totalboots))
+totalboots_df
+```
+
+Since I use the computer with Windows, I can't use forking, so I use socket instead. First build calculation for one single iter, then build the cluster with all variable, exporting time to each iter, eventually use parLapply to conduct bootstrap parallelly to get the results.
+
+3, Using futures with the future package.
+
+```{r}
+# upload all packages needed
+library(future)
+library(future.apply)
+
+# set the times for bootstrap
+times <- 1000
+
+#prepare multisession and worker
+plan(multisession, workers = 4, future.seed = TRUE)
+
+# use future_lapply to conduct bootstrap
+#' Function to create bootstrap
+#' 
+#' @param team variables being conducted with bootstrap
+#' @return the result of bootstrap
+totalboots <- future_lapply(unique(average$teamID), function(team) {
+  team_data <- average %>% filter(teamID == team) %>% pull(RF)
+  total <- numeric(times) 
+  for (i in 1:times) {
+    total[i] <- mean(sample(team_data, length(team_data), replace = TRUE))
+  }
+  return(sd(total))
+})
+
+# turn the result into data.frame
+result_df <- data.frame(teamID = unique(average$teamID), sd_bootstrap = unlist(totalboots))
+print(result_df)
+```
+
+Here use future, first due to the windows system I use multisession to get multiple workrs, then conduct bootstrap using future_lapply
+
+b, Generate a table showing the estimated RF and associated standard errors from the three approaches
+
+```{r}
+# get mean RF using naive
+totalboots1<-data.frame(tapply(average$RF,average$teamID,function(x){
+  total<-c()
+  for(i in 1:times){
+    total<-c(total,mean(sample(x,length(x),replace = TRUE)))
+  }
+  totalsd<-mean(total)
+  return(totalsd)
+}))
+colnames(totalboots1)<-"mean naive"
+
+
+#get se RF using naive
+averagerf<-data.frame(averagerf)
+averageRF<-cbind(totalboots0,averagerf)
+totalboots2<-averageRF$totalboots/sqrt(averageRF$count)
+
+
+#get mean RF using parallel
+#' Function to create bootstrap
+#' 
+#' @param x variables being conducted with bootstrap
+#' @return the result of bootstrap
+bootstrap_function <- function(x) {
+  total <- c()
+  for (i in 1:times) {
+    total <- c(total, mean(sample(x, length(x), replace = TRUE)))
+  }
+  mean(total)
+}
+
+# Create a cluster with the number of available cores
+cl <- makeCluster(detectCores() - 1)  
+
+# Export necessary variables and functions to each worker
+clusterExport(cl, varlist = c("average", "times", "bootstrap_function"))
+
+# Ensure that dplyr is available on each worker
+clusterEvalQ(cl, {library(dplyr)})
+
+# Perform parallel bootstrap sampling for each team using parLapply
+totalboots3<- parLapply(cl, unique(average$teamID), function(team) {
+  team_data <- average %>% filter(teamID == team) %>% pull(RF)
+  bootstrap_function(team_data)
+})
+
+# Stop the cluster after computation
+stopCluster(cl)
+
+# Combine the team IDs with their corresponding standard deviations into a data frame
+totalboots_df1<- data.frame(sd_RF = unlist(totalboots3))
+
+
+# get se RF using parallel
+averageRF<-cbind(totalboots_df,averagerf)
+totalboots4<-averageRF$sd_RF/sqrt(averageRF$count)
+
+
+#get mean RF using future
+#prepare multisession and worker
+plan(multisession, workers = 4, future.seed = TRUE)
+
+# use future_lapply to conduct bootstrap
+#' Function to create bootstrap
+#' 
+#' @param team variables being conducted with bootstrap
+#' @return the result of bootstrap
+totalboots5<- future_lapply(unique(average$teamID), function(team) {
+  team_data <- average %>% filter(teamID == team) %>% pull(RF)
+  total <- numeric(times) 
+  for (i in 1:times) {
+    total[i] <- mean(sample(team_data, length(team_data), replace = TRUE))
+  }
+  return(mean(total))
+})
+
+# turn the result into data.frame
+result_df1<- data.frame(sd_bootstrap = unlist(totalboots5))
+
+
+# get se RF using future
+averageRF<-cbind(result_df,averagerf)
+totalboots6<-averageRF$sd_bootstrap/sqrt(averageRF$count)
+
+#create the big table
+bigtable<-cbind(totalboots1,totalboots2,totalboots_df1,totalboots4,result_df1,totalboots6)
+colnames(bigtable)<-c("mean naive","se naive","mean parallel","se parallel","mean future","se future")
+
+# get the first 10 teams with highest RF, although the values are not the same, there doesn't exist many differences, so I judge the value of RF in each team with that of naive
+bigtable<-bigtable%>%
+  arrange(desc(bigtable$`mean naive`))
+bigtable<-data.frame(bigtable)
+bigtable[1:10,]
+```
+
+The table is generated as above
+
+c, Report and discuss the performance difference between the versions.
+
+```{r}
+# time taken for the operation of naive bootstrap
+system.time({
+#get the number of times
+times <- 1000
+
+#since stratified bootstrap is to get conduct bootstrap inside stratas, the averageRF for each team can't be used, here use individual RFs instead
+average<-average%>%
+  filter(!is.na(InnOuts) & InnOuts > 0)%>%
+  mutate(count=1)%>%
+  mutate(RF=3*(PO+A)/InnOuts)
+average<-data.frame(average)
+
+#use tapply to conduct bootstrap
+#' Function to create bootstrap
+#' 
+#' @param x variables being conducted with bootstrap
+#' @return the result of bootstrap
+totalboots<-tapply(average$RF,average$teamID,function(x){
+  total<-c()
+  for(i in 1:times){
+    total<-c(total,mean(sample(x,length(x),replace = TRUE)))
+  }
+  totalsd<-sd(total)
+  return(totalsd)
+})
+})
+
+# time taken for the operation of parallel bootstrap
+system.time({
+# Set number of bootstrap samples
+times <- 1000
+
+#' Function to create bootstrap
+#' 
+#' @param x variables being conducted with bootstrap
+#' @return the result of bootstrap
+bootstrap_function <- function(x) {
+  total <- c()
+  for (i in 1:times) {
+    total <- c(total, mean(sample(x, length(x), replace = TRUE)))
+  }
+  sd(total)
+}
+
+# Create a cluster with the number of available cores
+cl <- makeCluster(detectCores() - 1)  
+
+# Export necessary variables and functions to each worker
+clusterExport(cl, varlist = c("average", "times", "bootstrap_function"))
+
+# Ensure that dplyr is available on each worker
+clusterEvalQ(cl, {library(dplyr)})
+
+# Perform parallel bootstrap sampling for each team using parLapply
+totalboots <- parLapply(cl, unique(average$teamID), function(team) {
+  team_data <- average %>% filter(teamID == team) %>% pull(RF)
+  bootstrap_function(team_data)
+})
+
+# Stop the cluster after computation
+stopCluster(cl)
+
+# Combine the team IDs with their corresponding standard deviations into a data frame
+totalboots_df <- data.frame(teamID = unique(average$teamID),sd_RF = unlist(totalboots))
+})
+
+# time taken for the operation of future bootstrap
+system.time({
+ # set the times for bootstrap
+times <- 1000
+
+#prepare multisession and worker
+plan(multisession, workers = 4, future.seed = TRUE)
+
+# use future_lapply to conduct bootstrap
+#' Function to create bootstrap
+#' 
+#' @param team variables being conducted with bootstrap
+#' @return the result of bootstrap
+totalboots <- future_lapply(unique(average$teamID), function(team) {
+  team_data <- average %>% filter(teamID == team) %>% pull(RF)
+  total <- numeric(times) 
+  for (i in 1:times) {
+    total[i] <- mean(sample(team_data, length(team_data), replace = TRUE))
+  }
+  return(sd(total))
+})
+
+# turn the result into data.frame
+result_df <- data.frame(teamID = unique(average$teamID), sd_bootstrap = unlist(totalboots))
+})
+```
+
+From the system.time it can be seen that the user time of naive bootstrap is the longest, then comes future bootstrap, parallel bootstrap takes the least user time. There do exist weird phenomenon that the system and elapsed time for naive is the shortest and that of parallel and future is longer, I think that's due to the shortage of my storage space in my computer, which means the parallel computation can't be conducted effectively. Normally the system time should rank just like the user time while future bootstrap takes the shortest elapsed time, then comes parallel bootstrap, then naive.
+
+Github link:
+
+https://github.com/ChengruiZhao/stats-506-R-Chengrui-Zhao
